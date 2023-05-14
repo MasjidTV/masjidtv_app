@@ -1,0 +1,36 @@
+
+body {
+	background: transparent;
+}
+
+table {
+  width: 100%;
+}
+
+#prayer {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#prayer th {
+  padding: 8px 20px;
+  text-align: left;
+  background-color: #04AA6D;
+  color: white;
+}
+
+#prayer td{
+  border: 1px solid #ddd;
+  padding: 8px 20px;
+  text-align: left;
+}
+
+#prayer tr:nth-child(even){background-color: #f2f2f2;}
+
+#prayer tr:hover {background-color: #ddd;}
+
+.subuh {
+  background-color: gold;
+  font-weight: bold;
+}

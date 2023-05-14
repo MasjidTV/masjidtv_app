@@ -1,0 +1,14 @@
+{
+  "zone": "SGR02",
+  "time_format": "12",
+  "other_prayer_times": {
+    "imsak": false,
+    "syuruk": false,
+    "dhuha": false
+  },
+  "tarikh": {
+    "miladi": true,
+    "locale": "ms",
+    "hijri": true
+  }
+}
