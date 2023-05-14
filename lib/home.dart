@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'pages/app_about.dart';
 import 'pages/app_server.dart';
+import 'pages/app_settings.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -12,14 +13,10 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _selectedIndex = 0;
-  static const TextStyle optionStyle =
-      TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
-  static const List<Widget> _widgetOptions = <Widget>[
+
+  static const List<Widget> _widgetOptions = [
     AppServer(),
-    Text(
-      'Index 1: Settings',
-      style: optionStyle,
-    ),
+    AppSettings(),
     AppAbout(),
   ];
 

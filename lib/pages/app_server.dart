@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -35,12 +36,15 @@ class _AppServerState extends State<AppServer> {
     // Create a Shelf cascade with the static file handler first, and the fallback handler second.
     var cascade = Cascade().add(handler).add(_echoRequest);
 
-    // choose random port between 5000 and 8080
-    int port = 5000 + Random().nextInt(3080);
+    // read port from SP or assign randomly
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    var port = prefs.getInt('kSpServerPort') ?? _getRandomPort();
 
     // Start the server on port
     server = await io.serve(cascade.handler, InternetAddress.anyIPv4, port);
   }
+
+  int _getRandomPort() => 5000 + Random().nextInt(3080);
 
   Response _echoRequest(Request request) {
     // Create a plain text response with the request body.
@@ -144,18 +148,13 @@ class _AppServerState extends State<AppServer> {
           ),
           trailing: switch (_serverStatus) {
             ServerStatus.started => const Icon(Icons.stop, color: Colors.red),
-            ServerStatus.starting => const SizedBox(
-                height: 15,
-                width: 15,
-                child: CircularProgressIndicator(),
-              ),
-            ServerStatus.stopping => const SizedBox(
-                height: 15,
-                width: 15,
-                child: CircularProgressIndicator(),
-              ),
             ServerStatus.stopped =>
               const Icon(Icons.play_arrow, color: Colors.green),
+            _ => const SizedBox(
+                height: 15,
+                width: 15,
+                child: CircularProgressIndicator(),
+              ),
           },
         ),
         if (_serverStatus == ServerStatus.started)

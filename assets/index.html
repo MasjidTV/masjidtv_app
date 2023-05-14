@@ -2,11 +2,12 @@
 <html>
 
 <head>
-    <title>Local Time</title>
+    <title>MasjidTV Server</title>
 </head>
 
-<body>
+<body style="padding: 8px;">
     <h1>Server started</h1>
+    <p id="time"></p>
 
     <!-- this list need to be updated manually -->
     <h3>List of widgets</h3>
@@ -16,6 +17,16 @@
         <li><a href="./src/prayer-v1/index.html">src/prayer-v1/index.html</a></li>
         <li><a href="./src/tarikh-widget/index.html">src/tarikh-widget/index.html</a></li>
     </ul>
+
+    <script>
+        function updateTime() {
+            var now = new Date();
+            var timeString = now.toLocaleTimeString();
+            document.getElementById("time").textContent = 'Local time: ' + timeString;
+        }
+
+        setInterval(updateTime, 1000);
+    </script>
 
 </body>
 
