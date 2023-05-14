@@ -159,58 +159,33 @@ class _AppServerState extends State<AppServer> {
           },
         ),
         if (_serverStatus == ServerStatus.started)
-          FutureBuilder(
-            future: _networkInfo.getWifiIP(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return ListTile(
-                  onTap: () {
-                    LinkLauncher.launch(
-                        'http://${server!.address.host}:${server!.port}');
-                  },
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.indigo,
-                    child: Icon(Icons.router, color: Colors.white),
-                  ),
-                  title: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text.rich(
-                        TextSpan(
-                          text: 'Local: ',
-                          children: [
-                            TextSpan(
-                              text: '${server!.address.host}:${server!.port}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // 'Local: ${server!.address.host}:${server!.port}'),
-                      Text.rich(
-                        TextSpan(
-                          text: 'On your network: ',
-                          children: [
-                            TextSpan(
-                              text: '${snapshot.data}:${server!.port}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              } else if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
-              }
-              return const Text('Loading...');
+          ListTile(
+            onTap: () {
+              LinkLauncher.launch(
+                  'http://${server!.address.host}:${server!.port}');
             },
+            leading: const CircleAvatar(
+              backgroundColor: Colors.indigo,
+              child: Icon(Icons.router, color: Colors.white),
+            ),
+            title: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _NetworkText(
+                    'Local: ', '${server!.address.host}:${server!.port}'),
+                FutureBuilder(
+                  future: _networkInfo.getWifiIP(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return _NetworkText('On your network: ',
+                          '${snapshot.data}:${server!.port}');
+                    }
+                    return const _NetworkText('On your network: ', 'N/A');
+                  },
+                ),
+              ],
+            ),
           ),
         const Divider(),
         ListTile(
@@ -224,6 +199,30 @@ class _AppServerState extends State<AppServer> {
           onTap: () => _copyAssetsToDocuments(),
         ),
       ],
+    );
+  }
+}
+
+class _NetworkText extends StatelessWidget {
+  const _NetworkText(this.text, this.infoText);
+
+  final String text;
+  final String infoText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: text,
+        children: [
+          TextSpan(
+            text: infoText,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
