@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class AppAbout extends StatefulWidget {
   const AppAbout({super.key});
@@ -10,15 +11,19 @@ class AppAbout extends StatefulWidget {
 class _AppAboutState extends State<AppAbout> {
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       children: [
         ListTile(
-          leading: CircleAvatar(
+          leading: const CircleAvatar(
             backgroundColor: Colors.purple,
             child: Icon(Icons.data_object, color: Colors.white),
           ),
-          title: Text('Version'),
-          subtitle: Text('v0.1.2'),
+          title: const Text('Version'),
+          subtitle: FutureBuilder(
+              future: PackageInfo.fromPlatform(),
+              builder: (_, snapshot) {
+                return Text(snapshot.data?.version ?? 'N/A');
+              }),
         ),
       ],
     );
