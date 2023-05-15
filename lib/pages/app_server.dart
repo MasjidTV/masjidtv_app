@@ -11,6 +11,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
+import '../server/backend_server.dart';
 import '../util/link_launcher.dart';
 
 enum ServerStatus { started, starting, stopping, stopped }
@@ -25,7 +26,14 @@ class AppServer extends StatefulWidget {
 class _AppServerState extends State<AppServer> {
   final NetworkInfo _networkInfo = NetworkInfo();
   ServerStatus _serverStatus = ServerStatus.stopped;
+  ServerStatus _backendServerStatus = ServerStatus.stopped;
   HttpServer? server;
+  int? backendServerPort;
+
+  int _getRandomPort() {
+    var genPort = 5000 + Random().nextInt(3080);
+    return genPort == BackendServer.reservedPort ? _getRandomPort() : genPort;
+  }
 
   Future<void> _startShelfLocalhostServer() async {
     // Serve the device directory.
@@ -44,8 +52,6 @@ class _AppServerState extends State<AppServer> {
     server = await io.serve(cascade.handler, InternetAddress.anyIPv4, port);
   }
 
-  int _getRandomPort() => 5000 + Random().nextInt(3080);
-
   Response _echoRequest(Request request) {
     // Create a plain text response with the request body.
     return Response.ok('Request for "${request.url}" received.');
@@ -62,6 +68,18 @@ class _AppServerState extends State<AppServer> {
       _serverStatus = ServerStatus.stopped;
     });
     debugPrint('Stop server');
+  }
+
+  Future<void> _stopBackendServer() async {
+    setState(() {
+      _backendServerStatus = ServerStatus.stopping;
+      debugPrint('Stopping backend server');
+    });
+    await BackendServer.stop();
+    setState(() {
+      _backendServerStatus = ServerStatus.stopped;
+    });
+    debugPrint('Stop backend server');
   }
 
   /// Copy the html project folder from flutter assets to device directory
@@ -133,20 +151,78 @@ class _AppServerState extends State<AppServer> {
           title: Text(switch (_serverStatus) {
             ServerStatus.stopped => 'MasjidTV Server is stopped',
             ServerStatus.stopping => 'Disposing server',
-            ServerStatus.started =>
-              'Server is running (Long press to stop server)',
+            ServerStatus.started => 'Server is running',
             ServerStatus.starting => 'Starting server',
           }),
           subtitle: Text(
             switch (_serverStatus) {
               ServerStatus.stopped => 'Tap to start server',
               ServerStatus.stopping => 'Please wait...',
-              ServerStatus.started =>
-                'Server listening on port ${server!.port}',
+              ServerStatus.started => 'Long press to stop server',
               ServerStatus.starting => 'Please wait...',
             },
           ),
           trailing: switch (_serverStatus) {
+            ServerStatus.started => const Icon(Icons.stop, color: Colors.red),
+            ServerStatus.stopped =>
+              const Icon(Icons.play_arrow, color: Colors.green),
+            _ => const SizedBox(
+                height: 15,
+                width: 15,
+                child: CircularProgressIndicator(),
+              ),
+          },
+        ),
+        ListTile(
+          onTap: _backendServerStatus == ServerStatus.stopped
+              ? () async {
+                  setState(() => _backendServerStatus = ServerStatus.starting);
+
+                  try {
+                    backendServerPort = await BackendServer.start();
+                    setState(() => _backendServerStatus = ServerStatus.started);
+                  } catch (e) {
+                    setState(() => _backendServerStatus = ServerStatus.stopped);
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Error'),
+                        content: Text(e.toString()),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          )
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+                }
+              : null,
+          onLongPress: _backendServerStatus == ServerStatus.started
+              ? _stopBackendServer
+              : null,
+          leading: const CircleAvatar(
+            backgroundColor: Colors.orange,
+            child: Icon(Icons.developer_board, color: Colors.white),
+          ),
+          title: Text(switch (_backendServerStatus) {
+            ServerStatus.stopped => 'MasjidTV Backend is stopped',
+            ServerStatus.stopping => 'Disposing server',
+            ServerStatus.started => 'Backend Server is running',
+            ServerStatus.starting => 'Starting server',
+          }),
+          subtitle: Text(
+            switch (_backendServerStatus) {
+              ServerStatus.stopped => 'Tap to start server',
+              ServerStatus.stopping => 'Please wait...',
+              ServerStatus.started =>
+                'Server listening on port $backendServerPort (Long press to stop server)',
+              ServerStatus.starting => 'Please wait...',
+            },
+          ),
+          trailing: switch (_backendServerStatus) {
             ServerStatus.started => const Icon(Icons.stop, color: Colors.red),
             ServerStatus.stopped =>
               const Icon(Icons.play_arrow, color: Colors.green),

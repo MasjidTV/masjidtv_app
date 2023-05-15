@@ -21,12 +21,12 @@ fetch('../../config.json')
                 const zoneElement = document.getElementById('zone');
                 zoneElement.innerHTML = zones_db.find((zones) => zones.jakimCode == prayerZone.toUpperCase()).daerah;
 
-                // Parse the epoch timestamp to Date object
+                // Parse the epoch timestamp (seconds) to Date object
                 const prayers = {
-                    "imsak": new Date(prayerTimeToday.fajr - 10 * 60 * 1000),
+                    "imsak": new Date((prayerTimeToday.fajr - (10 * 60)) * 1000),
                     "subuh": new Date(prayerTimeToday.fajr * 1000),
                     "syuruk": new Date(prayerTimeToday.syuruk * 1000),
-                    "dhuha": new Date(prayerTimeToday.syuruk + 28 * 60 * 1000),
+                    "dhuha": new Date((prayerTimeToday.syuruk + (28 * 60)) * 1000),
                     "zuhur": new Date(prayerTimeToday.dhuhr * 1000),
                     "asar": new Date(prayerTimeToday.asr * 1000),
                     "maghrib": new Date(prayerTimeToday.maghrib * 1000),
@@ -36,7 +36,10 @@ fetch('../../config.json')
                 console.table(prayers);
 
                 // Modify a DOM element with the myData variable
+                const imsakElement = document.getElementById('time-imsak');
                 const subuhElement = document.getElementById('time-subuh');
+                const syurukElement = document.getElementById('time-syuruk');
+                const dhuhaElement = document.getElementById('time-dhuha');
                 const zuhurElement = document.getElementById('time-zuhur');
                 const asarElement = document.getElementById('time-asar');
                 const maghribElement = document.getElementById('time-maghrib');
@@ -44,7 +47,10 @@ fetch('../../config.json')
 
                 const isHour12 = setting.time_format === "12";
 
+                imsakElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.imsak);
                 subuhElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.subuh);
+                syurukElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.syuruk);
+                dhuhaElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.dhuha);
                 zuhurElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.zuhur);
                 asarElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.asar);
                 maghribElement.innerHTML = Intl.DateTimeFormat('en', { hour: 'numeric', minute: 'numeric', hour12: isHour12 }).format(prayers.maghrib);
@@ -58,7 +64,7 @@ fetch('../../config.json')
                     // const now = new Date(2023, 4, 4, 20, 39, 0); // for debugging
 
                     console.log(now);
-                    console.log(prayers.subuh);
+                    console.log(prayers.imsak);
 
                     var lst1 = document.getElementsByClassName('imsak');
                     for (var i = 0; i < lst1.length; ++i) {

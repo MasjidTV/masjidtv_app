@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../server/backend_server.dart';
+
 class AppSettings extends StatefulWidget {
   const AppSettings({super.key});
 
@@ -27,7 +29,7 @@ class _AppSettingsState extends State<AppSettings> {
     }
   }
 
-  void _showSettingsSavedToast(String message) {
+  void _showToast(String message) {
     Fluttertoast.showToast(
       msg: message,
       toastLength: Toast.LENGTH_SHORT,
@@ -65,12 +67,18 @@ class _AppSettingsState extends State<AppSettings> {
 
                     if (port == null) {
                       prefs.remove('kSpServerPort');
-                      _showSettingsSavedToast('Port settings saved');
+                      _showToast('Port settings saved');
+                      return;
+                    }
+
+                    if (port == BackendServer.reservedPort) {
+                      _showToast(
+                          'Port $port is reserved. Please choose another');
                       return;
                     }
 
                     await prefs.setInt('kSpServerPort', port);
-                    _showSettingsSavedToast('Port settings saved');
+                    _showToast('Port settings saved');
                   },
                   keyboardType: TextInputType.number,
                 )),
