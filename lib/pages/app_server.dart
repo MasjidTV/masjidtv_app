@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,14 +7,12 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shelf/shelf.dart';
-import 'package:shelf_static/shelf_static.dart';
-import 'package:shelf/shelf_io.dart' as io;
 
 import '../components/zone_selector.dart';
 import '../constants.dart';
 import '../model/jakim_zones.dart';
 import '../server/backend_server.dart';
+import '../server/html_server.dart';
 import '../util/link_launcher.dart';
 
 enum ServerStatus { started, starting, stopping, stopped }
@@ -31,7 +28,7 @@ class _AppServerState extends State<AppServer> {
   final NetworkInfo _networkInfo = NetworkInfo();
   ServerStatus _serverStatus = ServerStatus.stopped;
   ServerStatus _backendServerStatus = ServerStatus.stopped;
-  HttpServer? server;
+  int? htmlServerPort;
   int? backendServerPort;
 
   String? savedZone;
@@ -49,40 +46,13 @@ class _AppServerState extends State<AppServer> {
     });
   }
 
-  int _getRandomPort() {
-    var genPort = 5000 + Random().nextInt(3080);
-    return genPort == BackendServer.reservedPort ? _getRandomPort() : genPort;
-  }
-
-  Future<void> _startShelfLocalhostServer() async {
-    // Serve the device directory.
-    final directory = await getExternalStorageDirectory();
-    var handler =
-        createStaticHandler(directory!.path, defaultDocument: 'index.html');
-
-    // Create a Shelf cascade with the static file handler first, and the fallback handler second.
-    var cascade = Cascade().add(handler).add(_echoRequest);
-
-    // read port from SP or assign randomly
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    var port = prefs.getInt('kSpServerPort') ?? _getRandomPort();
-
-    // Start the server on port
-    server = await io.serve(cascade.handler, InternetAddress.anyIPv4, port);
-  }
-
-  Response _echoRequest(Request request) {
-    // Create a plain text response with the request body.
-    return Response.ok('Request for "${request.url}" received.');
-  }
-
   Future<void> _stopServer() async {
     setState(() {
       _serverStatus = ServerStatus.stopping;
       debugPrint('Stopping server');
     });
     // await Future.delayed(const Duration(seconds: 1));
-    server!.close();
+    await HtmlServer.stop();
     setState(() {
       _serverStatus = ServerStatus.stopped;
     });
@@ -151,7 +121,7 @@ class _AppServerState extends State<AppServer> {
                   setState(() => _serverStatus = ServerStatus.starting);
 
                   try {
-                    await _startShelfLocalhostServer();
+                    htmlServerPort = await HtmlServer.start();
                     setState(() => _serverStatus = ServerStatus.started);
                   } catch (e) {
                     setState(() => _serverStatus = ServerStatus.stopped);
@@ -266,8 +236,7 @@ class _AppServerState extends State<AppServer> {
         if (_serverStatus == ServerStatus.started)
           ListTile(
             onTap: () {
-              LinkLauncher.launch(
-                  'http://${server!.address.host}:${server!.port}');
+              LinkLauncher.launch(HtmlServer.url);
             },
             leading: const CircleAvatar(
               backgroundColor: Colors.indigo,
@@ -277,14 +246,13 @@ class _AppServerState extends State<AppServer> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _NetworkText(
-                    'Local: ', '${server!.address.host}:${server!.port}'),
+                _NetworkText('Local: ', HtmlServer.url),
                 FutureBuilder(
                   future: _networkInfo.getWifiIP(),
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       return _NetworkText('On your network: ',
-                          '${snapshot.data}:${server!.port}');
+                          '${snapshot.data}:$htmlServerPort');
                     }
                     return const _NetworkText('On your network: ', 'N/A');
                   },
@@ -302,13 +270,13 @@ class _AppServerState extends State<AppServer> {
           title: const Text('Prayer time zone'),
           onTap: () async {
             // read json from assets
-            final bundle = rootBundle;
-            final json =
-                await bundle.loadString('assets/app_reserved/jakim_zones.json');
+            final json = await rootBundle
+                .loadString('assets/app_reserved/jakim_zones.json');
             var jakimZonesList = JakimZones.fromList(jsonDecode(json));
 
             // show dialog
             JakimZones? selectedZone =
+                // ignore: use_build_context_synchronously
                 await Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => ZoneSelector(jakimZones: jakimZonesList),
               fullscreenDialog: true,
@@ -316,12 +284,9 @@ class _AppServerState extends State<AppServer> {
 
             if (selectedZone == null) return;
             // save to SP
-            final SharedPreferences prefs =
-                await SharedPreferences.getInstance();
+            final prefs = await SharedPreferences.getInstance();
             await prefs.setString(kSpJakimZone, selectedZone.jakimCode);
-            setState(() {
-              savedZone = selectedZone.jakimCode;
-            });
+            setState(() => savedZone = selectedZone.jakimCode);
           },
         ),
         ListTile(
