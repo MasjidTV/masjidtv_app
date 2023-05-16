@@ -51,7 +51,7 @@ class _AppSettingsState extends State<AppSettings> {
               child: Icon(Icons.cable, color: Colors.white),
             ),
             subtitle: const Text(
-                'Eg: 1024, 3000, 5500, 8000, etc. If empty, random port will be used'),
+                'Eg: 1024, 3000, 5500, 8000, etc. If empty, random port will be assigned'),
             title: const Text('Port selection'),
             trailing: SizedBox(
                 width: 150,
@@ -73,7 +73,7 @@ class _AppSettingsState extends State<AppSettings> {
 
                     if (port == BackendServer.reservedPort) {
                       _showToast(
-                          'Port $port is reserved. Please choose another');
+                          'Error: Port $port is reserved for backend server. Please choose another port');
                       return;
                     }
 

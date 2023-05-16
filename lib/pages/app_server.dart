@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,9 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
+import '../components/zone_selector.dart';
+import '../constants.dart';
+import '../model/jakim_zones.dart';
 import '../server/backend_server.dart';
 import '../util/link_launcher.dart';
 
@@ -29,6 +33,21 @@ class _AppServerState extends State<AppServer> {
   ServerStatus _backendServerStatus = ServerStatus.stopped;
   HttpServer? server;
   int? backendServerPort;
+
+  String? savedZone;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaveZone();
+  }
+
+  void _loadSaveZone() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      savedZone = prefs.getString(kSpJakimZone);
+    });
+  }
 
   int _getRandomPort() {
     var genPort = 5000 + Random().nextInt(3080);
@@ -84,7 +103,7 @@ class _AppServerState extends State<AppServer> {
 
   /// Copy the html project folder from flutter assets to device directory
   /// The shelf cannot open access from flutter assets
-  Future<void> _copyAssetsToDocuments() async {
+  Future<List<String>> _copyAssetsToDocuments() async {
     // Get the app documents directory.
     final directory = await getExternalStorageDirectory();
 
@@ -95,10 +114,16 @@ class _AppServerState extends State<AppServer> {
     final assets = await bundle.loadString('AssetManifest.json');
     var assetList = jsonDecode(assets) as Map<String, dynamic>;
 
+    // removed unwanted assets
+    assetList.removeWhere((key, value) =>
+        key.startsWith('assets/app_reserved') || key.startsWith('packages'));
+
     // print all asset that will be copied
     for (final assetPath in assetList.keys) {
       debugPrint(assetPath);
     }
+
+    List<String> copiedAssets = [];
 
     // Copy each asset to the app documents directory.
     for (final assetPath in assetList.keys) {
@@ -108,7 +133,12 @@ class _AppServerState extends State<AppServer> {
       final file = File('${directory!.path}/$correctedAssetPath');
       await file.create(recursive: true);
       await file.writeAsBytes(assetData.buffer.asUint8List());
+
+      // record
+      copiedAssets.add(correctedAssetPath);
     }
+
+    return copiedAssets;
   }
 
   @override
@@ -265,13 +295,48 @@ class _AppServerState extends State<AppServer> {
         const Divider(),
         ListTile(
           leading: const CircleAvatar(
+            backgroundColor: Colors.redAccent,
+            child: Icon(Icons.pin_drop, color: Colors.white),
+          ),
+          subtitle: Text('${savedZone ?? 'Not set'} (Tap to set)'),
+          title: const Text('Prayer time zone'),
+          onTap: () async {
+            // read json from assets
+            final bundle = rootBundle;
+            final json =
+                await bundle.loadString('assets/app_reserved/jakim_zones.json');
+            var jakimZonesList = JakimZones.fromList(jsonDecode(json));
+
+            // show dialog
+            JakimZones? selectedZone =
+                await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ZoneSelector(jakimZones: jakimZonesList),
+              fullscreenDialog: true,
+            ));
+
+            if (selectedZone == null) return;
+            // save to SP
+            final SharedPreferences prefs =
+                await SharedPreferences.getInstance();
+            await prefs.setString(kSpJakimZone, selectedZone.jakimCode);
+            setState(() {
+              savedZone = selectedZone.jakimCode;
+            });
+          },
+        ),
+        ListTile(
+          leading: const CircleAvatar(
             backgroundColor: Colors.blue,
             child: Icon(Icons.folder_copy, color: Colors.white),
           ),
           subtitle: const Text(
               'Copy the html project folder from flutter assets to device directory'),
           title: const Text('Prepare server'),
-          onTap: () => _copyAssetsToDocuments(),
+          onTap: () async {
+            var copiedAssets = await _copyAssetsToDocuments();
+            Fluttertoast.showToast(
+                msg: 'Copied ${copiedAssets.length} items: $copiedAssets');
+          },
         ),
       ],
     );
