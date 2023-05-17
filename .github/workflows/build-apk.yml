@@ -40,6 +40,12 @@ jobs:
       # - name: Decoding android/key.jks
       #   run: echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
 
+      - name: Create .env file
+        run: |
+          cat > assets/.env <<EOF
+          GITHUB_PAT=${{ secrets.GH_REPO_PAT }}
+          EOF
+
       - name: Build splitted apk(s)
         run: |
           flutter pub get

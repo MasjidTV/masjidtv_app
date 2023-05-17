@@ -62,7 +62,7 @@ class HtmlContentSetup {
   }
 
   static Future<String?> _downloadGithubRepo() async {
-    var githubApiKey = dotenv.env['GITHUB_PAT'];
+    var githubApiKey = dotenv.env['GH_REPO_PAT'];
 
     debugPrint('key: $githubApiKey');
 
