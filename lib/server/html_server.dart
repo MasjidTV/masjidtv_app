@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'package:shelf/shelf_io.dart' as io;
+import 'package:path/path.dart' as p;
 
 import 'backend_server.dart';
 
@@ -15,8 +16,8 @@ class HtmlServer {
   static Future<int> start() async {
     // Serve the device directory.
     final directory = await getExternalStorageDirectory();
-    var handler =
-        createStaticHandler(directory!.path, defaultDocument: 'index.html');
+    var handler = createStaticHandler(p.join(directory!.path, 'web'),
+        defaultDocument: 'index.html');
 
     // Create a Shelf cascade with the static file handler first, and the fallback handler second.
     var cascade = Cascade().add(handler).add(_echoRequest);

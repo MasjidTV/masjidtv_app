@@ -13,6 +13,7 @@ import '../constants.dart';
 import '../model/jakim_zones.dart';
 import '../server/backend_server.dart';
 import '../server/html_server.dart';
+import '../util/html_content_setup.dart';
 import '../util/link_launcher.dart';
 
 enum ServerStatus { started, starting, stopping, stopped }
@@ -99,7 +100,7 @@ class _AppServerState extends State<AppServer> {
     for (final assetPath in assetList.keys) {
       final assetData = await bundle.load(assetPath);
       // remove the 'assets/' part from the path
-      final correctedAssetPath = assetPath.replaceFirst('assets/', '');
+      final correctedAssetPath = assetPath.replaceFirst('assets/', 'web/');
       final file = File('${directory!.path}/$correctedAssetPath');
       await file.create(recursive: true);
       await file.writeAsBytes(assetData.buffer.asUint8List());
@@ -301,6 +302,19 @@ class _AppServerState extends State<AppServer> {
             var copiedAssets = await _copyAssetsToDocuments();
             Fluttertoast.showToast(
                 msg: 'Copied ${copiedAssets.length} items: $copiedAssets');
+          },
+        ),
+        ListTile(
+          leading: const CircleAvatar(
+            backgroundColor: Colors.blue,
+            child: Icon(Icons.download_for_offline, color: Colors.white),
+          ),
+          subtitle: const Text(
+              'Copy the html project folder from flutter assets to device directory'),
+          title: const Text('Prepare server'),
+          onTap: () async {
+            await HtmlContentSetup.setupHtmlContentFromGithub();
+            Fluttertoast.showToast(msg: 'Downloaded repo content successfully');
           },
         ),
       ],
