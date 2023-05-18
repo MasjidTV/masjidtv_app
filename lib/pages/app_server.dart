@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 import '../components/zone_selector.dart';
 import '../constants.dart';
@@ -110,6 +112,74 @@ class _AppServerState extends State<AppServer> {
     }
 
     return copiedAssets;
+  }
+
+  DateTime _addOneMonth(DateTime date, {int monthCount = 1}) {
+    int year = date.year;
+    int month = date.month + monthCount;
+
+    if (month > 12) {
+      month = 1;
+      year++;
+    }
+
+    return DateTime(year, month, date.day);
+  }
+
+  void _setupZone(String jakimZone) async {
+    final now = DateTime.now();
+
+    for (var i = 0; i < 12; i++) {
+      var targetMonthYear = _addOneMonth(now, monthCount: i);
+      var url = Uri.parse(
+          'https://mpt-server-8n6eljjbx-iqfareez.vercel.app/api/v2/solat/$jakimZone?year=${targetMonthYear.year}&month=${targetMonthYear.month}'); // Replace with your API URL
+      debugPrint('Started fetching $url');
+      try {
+        var response = await http.get(url);
+        if (response.statusCode == 200) {
+          var jsonResponse = json.decode(response.body);
+
+          debugPrint('jsonResponse');
+          debugPrint(jsonResponse.toString());
+
+          // Save JSON data to a file
+          final dir = await getExternalStorageDirectory();
+          final saveAs = join(dir!.path, 'json_db',
+              '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json');
+
+          debugPrint('Saving to $saveAs');
+          var file = File(saveAs);
+          await file.create(recursive: true);
+          await file.writeAsString(json.encode(jsonResponse));
+
+          debugPrint('JSON response saved to file ${file.path}.');
+          setState(() {});
+        } else {
+          print('Request failed with status: ${response.statusCode}.');
+        }
+      } catch (e) {
+        print('Error occurred: $e');
+      }
+    }
+  }
+
+  /// Check if the prayer time database already saved and available
+  Future<List<String>?> _verifyZonesAvailable(String jakimCode) async {
+    var filesPath = await _listFilesInDbDirectory();
+
+    // return list of filebasename that starts with jakimCode
+    return filesPath.where((element) => element.startsWith(jakimCode)).toList();
+  }
+
+  /// List the filename in the prayer time database directory
+  Future<List<String>> _listFilesInDbDirectory() async {
+    final dir = await getExternalStorageDirectory();
+    final savedZonePath = join(dir!.path, 'json_db');
+
+    // list all files in savedZonePath directory
+    var files = Directory(savedZonePath).listSync().toList();
+
+    return files.map((e) => basename(e.path)).toList();
   }
 
   @override
@@ -291,6 +361,37 @@ class _AppServerState extends State<AppServer> {
           },
         ),
         ListTile(
+          enabled: savedZone != null,
+          leading: const CircleAvatar(
+            backgroundColor: Colors.pink,
+            child: Icon(Icons.data_array, color: Colors.white),
+          ),
+          subtitle: FutureBuilder(
+              future: _verifyZonesAvailable(savedZone!),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  if (snapshot.data!.isEmpty) {
+                    return const Text('No downloaded data yet. Tap to set up');
+                  }
+                  var monthYear = snapshot.data!
+                      .map((e) =>
+                          '${e.split('-')[1]}-${e.split('-')[2].split('.')[0]}')
+                      .toList();
+                  // Extracting the "month-year" portion from filename
+                  return Text(
+                    'Available: ${monthYear.join(', ')}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  );
+                }
+                return const Text('N/A or loading');
+              }),
+          title: const Text('Prayer time database'),
+          onTap: () async {
+            _setupZone(savedZone!);
+          },
+        ),
+        ListTile(
           leading: const CircleAvatar(
             backgroundColor: Colors.blue,
             child: Icon(Icons.folder_copy, color: Colors.white),
@@ -310,7 +411,7 @@ class _AppServerState extends State<AppServer> {
             child: Icon(Icons.download_for_offline, color: Colors.white),
           ),
           subtitle: const Text(
-              'Copy the html project folder from flutter assets to device directory'),
+              'Download HTML project folder from GitHub to device directory'),
           title: const Text('Prepare server'),
           onTap: () async {
             await HtmlContentSetup.setupHtmlContentFromGithub();
