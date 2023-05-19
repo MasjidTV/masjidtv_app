@@ -158,9 +158,9 @@ class _AppServerState extends State<AppServer> {
 
         setState(() {});
       } else {
-        if (response.statusCode != 404) {
+        if (response.statusCode == 404) {
           debugPrint('Data not available yet maybe');
-          return;
+          continue;
         }
         throw HttpException('Error ${response.statusCode}');
       }
