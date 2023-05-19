@@ -20,6 +20,8 @@ import '../util/link_launcher.dart';
 
 enum ServerStatus { started, starting, stopping, stopped }
 
+enum ProcessStatus { started, completed }
+
 class AppServer extends StatefulWidget {
   const AppServer({super.key});
 
@@ -33,6 +35,8 @@ class _AppServerState extends State<AppServer> {
   ServerStatus _backendServerStatus = ServerStatus.stopped;
   int? htmlServerPort;
   int? backendServerPort;
+  ProcessStatus prepareServerStatus = ProcessStatus.completed;
+  ProcessStatus setupZoneStatus = ProcessStatus.completed;
 
   String? savedZone;
 
@@ -119,14 +123,14 @@ class _AppServerState extends State<AppServer> {
     int month = date.month + monthCount;
 
     if (month > 12) {
-      month = 1;
-      year++;
+      year += (month - 1) ~/ 12; // Add the number of years
+      month = (month - 1) % 12 + 1; // Adjust the month within 1-12 range
     }
 
     return DateTime(year, month, date.day);
   }
 
-  void _setupZone(String jakimZone) async {
+  Future<void> _setupZone(String jakimZone) async {
     final now = DateTime.now();
 
     for (var i = 0; i < 12; i++) {
@@ -134,31 +138,30 @@ class _AppServerState extends State<AppServer> {
       var url = Uri.parse(
           'https://mpt-server-8n6eljjbx-iqfareez.vercel.app/api/v2/solat/$jakimZone?year=${targetMonthYear.year}&month=${targetMonthYear.month}'); // Replace with your API URL
       debugPrint('Started fetching $url');
-      try {
-        var response = await http.get(url);
-        if (response.statusCode == 200) {
-          var jsonResponse = json.decode(response.body);
+      debugPrint('for month ${targetMonthYear.month}-${targetMonthYear.year}');
 
-          debugPrint('jsonResponse');
-          debugPrint(jsonResponse.toString());
+      var response = await http.get(url);
+      if (response.statusCode == 200) {
+        var jsonResponse = json.decode(response.body);
 
-          // Save JSON data to a file
-          final dir = await getExternalStorageDirectory();
-          final saveAs = join(dir!.path, 'json_db',
-              '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json');
+        // Save JSON data to a file
+        final dir = await getExternalStorageDirectory();
+        final saveAs = join(dir!.path, 'web', 'db',
+            '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json');
 
-          debugPrint('Saving to $saveAs');
-          var file = File(saveAs);
-          await file.create(recursive: true);
-          await file.writeAsString(json.encode(jsonResponse));
+        debugPrint('Saving to $saveAs');
+        var file = File(saveAs);
+        await file.create(recursive: true);
+        await file.writeAsString(json.encode(jsonResponse));
 
-          debugPrint('JSON response saved to file ${file.path}.');
-          setState(() {});
-        } else {
-          print('Request failed with status: ${response.statusCode}.');
+        debugPrint('JSON response saved to file ${file.path}.');
+
+        setState(() {});
+      } else {
+        if (response.statusCode != 404) {
+          debugPrint('Data not available yet maybe');
         }
-      } catch (e) {
-        print('Error occurred: $e');
+        throw HttpException('Error ${response.statusCode}');
       }
     }
   }
@@ -174,12 +177,34 @@ class _AppServerState extends State<AppServer> {
   /// List the filename in the prayer time database directory
   Future<List<String>> _listFilesInDbDirectory() async {
     final dir = await getExternalStorageDirectory();
-    final savedZonePath = join(dir!.path, 'json_db');
+    final savedZonePath = join(dir!.path, 'web', 'db');
 
     // list all files in savedZonePath directory
     var files = Directory(savedZonePath).listSync().toList();
 
     return files.map((e) => basename(e.path)).toList();
+  }
+
+  /// Write the zone to the HTML server config file
+  Future<void> _writeZoneToConfigFile(String jakimZone) async {
+    // open a file
+    final directory = await getExternalStorageDirectory();
+    var file = File('${directory!.path}/web/config.json');
+
+    // read the file
+    var content = await file.readAsString();
+
+    // parse the json
+    var jsonContent = jsonDecode(content);
+
+    // change the zone
+    jsonContent['zone'] = jakimZone;
+
+    // convert back to string
+    var newContent = jsonEncode(jsonContent);
+
+    // write the file
+    await file.writeAsString(newContent);
   }
 
   @override
@@ -357,7 +382,11 @@ class _AppServerState extends State<AppServer> {
             // save to SP
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString(kSpJakimZone, selectedZone.jakimCode);
+
+            await _writeZoneToConfigFile(selectedZone.jakimCode);
+            debugPrint('Zone saved to config.json');
             setState(() => savedZone = selectedZone.jakimCode);
+            Fluttertoast.showToast(msg: "Zone saved");
           },
         ),
         ListTile(
@@ -367,7 +396,7 @@ class _AppServerState extends State<AppServer> {
             child: Icon(Icons.data_array, color: Colors.white),
           ),
           subtitle: FutureBuilder(
-              future: _verifyZonesAvailable(savedZone!),
+              future: _verifyZonesAvailable(savedZone ?? ''),
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   if (snapshot.data!.isEmpty) {
@@ -384,38 +413,96 @@ class _AppServerState extends State<AppServer> {
                     overflow: TextOverflow.ellipsis,
                   );
                 }
-                return const Text('N/A or loading');
+                return const Text('N/A');
               }),
           title: const Text('Prayer time database'),
           onTap: () async {
-            _setupZone(savedZone!);
+            setState(() => setupZoneStatus = ProcessStatus.started);
+            try {
+              await _setupZone(savedZone!);
+            } catch (e) {
+              Fluttertoast.showToast(msg: "Error while setup zone: $e");
+            }
+            setState(() => setupZoneStatus = ProcessStatus.completed);
+          },
+          trailing: switch (setupZoneStatus) {
+            ProcessStatus.completed => null,
+            ProcessStatus.started => const SizedBox(
+                height: 25,
+                width: 25,
+                child: CircularProgressIndicator(),
+              ),
           },
         ),
-        ListTile(
-          leading: const CircleAvatar(
-            backgroundColor: Colors.blue,
-            child: Icon(Icons.folder_copy, color: Colors.white),
-          ),
-          subtitle: const Text(
-              'Copy the html project folder from flutter assets to device directory'),
-          title: const Text('Prepare server'),
-          onTap: () async {
-            var copiedAssets = await _copyAssetsToDocuments();
-            Fluttertoast.showToast(
-                msg: 'Copied ${copiedAssets.length} items: $copiedAssets');
-          },
-        ),
+        // ListTile(
+        //   leading: const CircleAvatar(
+        //     backgroundColor: Colors.blue,
+        //     child: Icon(Icons.folder_copy, color: Colors.white),
+        //   ),
+        //   subtitle: const Text(
+        //       'Copy the html project folder from flutter assets to device directory'),
+        //   title: const Text('Prepare server'),
+        //   onTap: () async {
+        //     var copiedAssets = await _copyAssetsToDocuments();
+        //     Fluttertoast.showToast(
+        //         msg: 'Copied ${copiedAssets.length} items: $copiedAssets');
+        //   },
+        // ),
         ListTile(
           leading: const CircleAvatar(
             backgroundColor: Colors.blue,
             child: Icon(Icons.download_for_offline, color: Colors.white),
           ),
-          subtitle: const Text(
-              'Download HTML project folder from GitHub to device directory'),
+          subtitle: const Text('Download HTML project folder to device'),
           title: const Text('Prepare server'),
           onTap: () async {
-            await HtmlContentSetup.setupHtmlContentFromGithub();
-            Fluttertoast.showToast(msg: 'Downloaded repo content successfully');
+            setState(() => prepareServerStatus = ProcessStatus.started);
+
+            var isAlreadySetup = await HtmlContentSetup.isAlreadySetup();
+            // show alert dialog if already setup
+            if (isAlreadySetup) {
+              // ignore: use_build_context_synchronously
+              var res = await showDialog(
+                  context: context,
+                  builder: (_) {
+                    return AlertDialog(
+                      content: const Text(
+                          'Seems like the HTML project folder is already setup. Running the setup again will overwrite the existing files. Are you sure?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Yes'),
+                        ),
+                      ],
+                    );
+                  });
+
+              if (res == null || res == false) {
+                setState(() => prepareServerStatus = ProcessStatus.completed);
+                return;
+              }
+            }
+            try {
+              await HtmlContentSetup.setupHtmlContentFromGithub();
+              Fluttertoast.showToast(
+                  msg: 'Downloaded repo content successfully');
+            } catch (e) {
+              debugPrint(e.toString());
+              Fluttertoast.showToast(msg: 'Error occured: $e');
+            }
+            setState(() => prepareServerStatus = ProcessStatus.completed);
+          },
+          trailing: switch (prepareServerStatus) {
+            ProcessStatus.completed => null,
+            ProcessStatus.started => const SizedBox(
+                height: 25,
+                width: 25,
+                child: CircularProgressIndicator(),
+              ),
           },
         ),
       ],

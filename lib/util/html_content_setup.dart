@@ -8,6 +8,14 @@ import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 
 class HtmlContentSetup {
+  /// Check if was already setup
+  static Future<bool> isAlreadySetup() async {
+    final directory = await getExternalStorageDirectory();
+    var webDir = Directory(p.join(directory!.path, 'web'));
+    return await webDir.exists();
+  }
+
+  /// Download repo from github and extract it to the 'web' folder
   static Future<void> setupHtmlContentFromGithub() async {
     var zipRepo = await _downloadGithubRepo();
     if (zipRepo == null) {
@@ -42,15 +50,97 @@ class HtmlContentSetup {
       return;
     }
 
-    List<FileSystemEntity> contents = await sourceDirectory.list().toList();
+    List<FileSystemEntity> contents = sourceDirectory.listSync();
+
+    for (var element in contents) {
+      debugPrint(element.path);
+    }
+
+    // for (FileSystemEntity content in contents) {
+    //   debugPrint(content.path);
+    //   await content.rename(destinationDirectory.path);
+    // }
 
     for (FileSystemEntity content in contents) {
-      await content.rename(destinationDirectory.path);
+      debugPrint(content.path);
+      if (content is Directory) {
+        await _copyDirectoryToDestination(content, destinationDirectory);
+      } else if (content is File) {
+        await _copyFileToDestination(content, destinationDirectory);
+      }
     }
 
     await sourceDirectory.delete(recursive: true);
     debugPrint('Contents moved successfully!');
   }
+
+  static Future<void> _copyDirectoryToDestination(
+      Directory sourceDirectory, Directory destinationDirectory) async {
+    var tempCorrectedPath = destinationDirectory.path.split('/');
+    tempCorrectedPath.removeWhere(
+        (element) => element.contains("iqfareez-masjidTV-waktusolat"));
+    var correctedDirectory = Directory(tempCorrectedPath.join('/'));
+    String sourceDirectoryName = sourceDirectory.path.split('/').last;
+    String destinationDirectoryPath =
+        '${correctedDirectory.path}/$sourceDirectoryName';
+    Directory destinationSubDirectory = Directory(destinationDirectoryPath);
+    // remove the first directory name
+    // ie: /web/iqfareez-masjidTV-waktusolat-cb802722d1e5152df3be7b29d286a08ef162f68e
+    // to /web
+    await destinationSubDirectory.create(recursive: true);
+
+    List<FileSystemEntity> contents = sourceDirectory.listSync();
+
+    for (FileSystemEntity content in contents) {
+      if (content is Directory) {
+        await _copyDirectoryToDestination(content, destinationSubDirectory);
+      } else if (content is File) {
+        await _copyFileToDestination(content, destinationSubDirectory);
+      }
+    }
+  }
+
+  static Future<void> _copyFileToDestination(
+      File sourceFile, Directory destinationDirectory) async {
+    var tempCorrectedPath = destinationDirectory.path.split('/');
+    tempCorrectedPath.removeWhere(
+        (element) => element.contains("iqfareez-masjidTV-waktusolat"));
+    var correctedDirectory = Directory(tempCorrectedPath.join('/'));
+    String fileName = sourceFile.path.split('/').last;
+    File destinationFile = File('${correctedDirectory.path}/$fileName');
+    await sourceFile.copy(destinationFile.path);
+  }
+
+  // Future<List<String>> _copyAssetsToDocuments(String fromPath, String toPath) async {
+  //   // Get the app documents directory.
+  //   final directory = await getExternalStorageDirectory();
+
+  //   // removed unwanted assets
+  //   assetList.removeWhere((key, value) =>
+  //       key.startsWith('assets/app_reserved') || key.startsWith('packages'));
+
+  //   // print all asset that will be copied
+  //   for (final assetPath in assetList.keys) {
+  //     debugPrint(assetPath);
+  //   }
+
+  //   List<String> copiedAssets = [];
+
+  //   // Copy each asset to the app documents directory.
+  //   for (final assetPath in assetList.keys) {
+  //     final assetData = await bundle.load(assetPath);
+  //     // remove the 'assets/' part from the path
+  //     final correctedAssetPath = assetPath.replaceFirst('assets/', 'web/');
+  //     final file = File('${directory!.path}/$correctedAssetPath');
+  //     await file.create(recursive: true);
+  //     await file.writeAsBytes(assetData.buffer.asUint8List());
+
+  //     // record
+  //     copiedAssets.add(correctedAssetPath);
+  //   }
+
+  //   return copiedAssets;
+  // }
 
   static Future<String> _extractZipToStorage(
       {required String zipFilePath}) async {
@@ -77,7 +167,6 @@ class HtmlContentSetup {
         "X-GitHub-Api-Version": "2022-11-28",
       },
     );
-    print('Received');
     if (response.statusCode == 200) {
       final bytes = response.bodyBytes;
 
@@ -93,8 +182,8 @@ class HtmlContentSetup {
 
       return file.path;
     } else {
-      print('Request failed with status: ${response.statusCode}.');
-      throw Exception('Failed to download the tar file');
+      print('Download zip failed with status: ${response.statusCode}.');
+      throw Exception('Failed to download the zip file');
     }
   }
 }
