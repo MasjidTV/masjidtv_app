@@ -2,22 +2,21 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'package:shelf/shelf_io.dart' as io;
-import 'package:path/path.dart' as p;
 
+import '../util/my_storage.dart';
 import 'backend_server.dart';
 
 class HtmlServer {
   static HttpServer? _server;
   static Future<int> start() async {
     // Serve the device directory.
-    final directory = await getExternalStorageDirectory();
-    var handler = createStaticHandler(p.join(directory!.path, 'web'),
-        defaultDocument: 'index.html');
+    var htmlProjectDir = await MyStorage.getMasjidTvDirectory();
+    var handler =
+        createStaticHandler(htmlProjectDir.path, defaultDocument: 'index.html');
 
     // Create a Shelf cascade with the static file handler first, and the fallback handler second.
     var cascade = Cascade().add(handler).add(_echoRequest);

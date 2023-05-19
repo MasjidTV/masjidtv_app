@@ -8,6 +8,8 @@ import 'package:shelf/shelf_io.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import '../util/my_storage.dart';
+
 /// Backend server is to manage config files.
 /// ie: Read & write to config files from html frontend.
 class BackendServer {
@@ -57,9 +59,9 @@ class BackendServer {
   /// Retrieve config file from frontend and save it
   static Future<Response> _saveConfigFile(Request request) async {
     // open a file
-    final directory = await getExternalStorageDirectory();
+    final directory = await MyStorage.getMasjidTvDirectory();
 
-    var file = File('${directory!.path}/config.json');
+    var file = File('${directory.path}/config.json');
     debugPrint('Try accessing file: ${file.path}');
 
     var contents = await request.readAsString();

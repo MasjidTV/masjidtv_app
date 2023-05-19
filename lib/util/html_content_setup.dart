@@ -6,6 +6,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
+
+import 'my_storage.dart';
 
 class HtmlContentSetup {
   /// Check if was already setup
@@ -17,6 +20,10 @@ class HtmlContentSetup {
 
   /// Download repo from github and extract it to the 'web' folder
   static Future<void> setupHtmlContentFromGithub() async {
+    var permissionStatus = await Permission.manageExternalStorage.status;
+    if (!permissionStatus.isGranted) {
+      await Permission.manageExternalStorage.request();
+    }
     var zipRepo = await _downloadGithubRepo();
     if (zipRepo == null) {
       throw Exception(
@@ -27,12 +34,12 @@ class HtmlContentSetup {
     // We need to move all the files and dir the files to /web
     var extractedPath = await _extractZipToStorage(zipFilePath: zipRepo);
 
-    String sourceDirectoryPath = extractedPath;
-    var targetDirectory =
-        Directory(p.join((await getExternalStorageDirectory())!.path, 'web'));
-    await targetDirectory.create();
-    await _moveContentsToDestinationDirectory(
-        sourceDirectoryPath, targetDirectory.path);
+    // Extract the tar file to the device folder
+    var extractDir = await MyStorage.getMasjidTvDirectory();
+
+    debugPrint('moving to $extractDir');
+
+    await _moveContentsToDestinationDirectory(extractedPath, extractDir.path);
   }
 
   static Future<void> _moveContentsToDestinationDirectory(

@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,6 +16,7 @@ import '../server/backend_server.dart';
 import '../server/html_server.dart';
 import '../util/html_content_setup.dart';
 import '../util/link_launcher.dart';
+import '../util/my_storage.dart';
 
 enum ServerStatus { started, starting, stopping, stopped }
 
@@ -82,7 +82,7 @@ class _AppServerState extends State<AppServer> {
   /// The shelf cannot open access from flutter assets
   Future<List<String>> _copyAssetsToDocuments() async {
     // Get the app documents directory.
-    final directory = await getExternalStorageDirectory();
+    final directory = await MyStorage.getMasjidTvDirectory();
 
     // Get a handle to the asset bundle.
     final bundle = rootBundle;
@@ -145,8 +145,8 @@ class _AppServerState extends State<AppServer> {
         var jsonResponse = json.decode(response.body);
 
         // Save JSON data to a file
-        final dir = await getExternalStorageDirectory();
-        final saveAs = join(dir!.path, 'web', 'db',
+        final dir = await MyStorage.getMasjidTvDirectory();
+        final saveAs = join(dir.path, 'db',
             '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json');
 
         debugPrint('Saving to $saveAs');
@@ -160,6 +160,7 @@ class _AppServerState extends State<AppServer> {
       } else {
         if (response.statusCode != 404) {
           debugPrint('Data not available yet maybe');
+          return;
         }
         throw HttpException('Error ${response.statusCode}');
       }
@@ -176,8 +177,8 @@ class _AppServerState extends State<AppServer> {
 
   /// List the filename in the prayer time database directory
   Future<List<String>> _listFilesInDbDirectory() async {
-    final dir = await getExternalStorageDirectory();
-    final savedZonePath = join(dir!.path, 'web', 'db');
+    final dir = await MyStorage.getMasjidTvDirectory();
+    final savedZonePath = join(dir.path, 'db');
 
     // list all files in savedZonePath directory
     var files = Directory(savedZonePath).listSync().toList();
@@ -188,8 +189,8 @@ class _AppServerState extends State<AppServer> {
   /// Write the zone to the HTML server config file
   Future<void> _writeZoneToConfigFile(String jakimZone) async {
     // open a file
-    final directory = await getExternalStorageDirectory();
-    var file = File('${directory!.path}/web/config.json');
+    var dir = await MyStorage.getMasjidTvDirectory();
+    var file = File('${dir.path}/config.json');
 
     // read the file
     var content = await file.readAsString();
@@ -359,6 +360,63 @@ class _AppServerState extends State<AppServer> {
         const Divider(),
         ListTile(
           leading: const CircleAvatar(
+            backgroundColor: Colors.blue,
+            child: Icon(Icons.download_for_offline, color: Colors.white),
+          ),
+          subtitle: const Text('Download HTML project folder to device'),
+          title: const Text('Prepare server'),
+          onTap: () async {
+            setState(() => prepareServerStatus = ProcessStatus.started);
+
+            var isAlreadySetup = await HtmlContentSetup.isAlreadySetup();
+            // show alert dialog if already setup
+            if (isAlreadySetup) {
+              // ignore: use_build_context_synchronously
+              var res = await showDialog(
+                  context: context,
+                  builder: (_) {
+                    return AlertDialog(
+                      content: const Text(
+                          'Seems like the HTML project folder is already setup. Running the setup again will overwrite the existing files. Are you sure?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Yes'),
+                        ),
+                      ],
+                    );
+                  });
+
+              if (res == null || res == false) {
+                setState(() => prepareServerStatus = ProcessStatus.completed);
+                return;
+              }
+            }
+            try {
+              await HtmlContentSetup.setupHtmlContentFromGithub();
+              Fluttertoast.showToast(
+                  msg: 'Downloaded repo content successfully');
+            } catch (e) {
+              debugPrint(e.toString());
+              Fluttertoast.showToast(msg: 'Error occured: $e');
+            }
+            setState(() => prepareServerStatus = ProcessStatus.completed);
+          },
+          trailing: switch (prepareServerStatus) {
+            ProcessStatus.completed => null,
+            ProcessStatus.started => const SizedBox(
+                height: 25,
+                width: 25,
+                child: CircularProgressIndicator(),
+              ),
+          },
+        ),
+        ListTile(
+          leading: const CircleAvatar(
             backgroundColor: Colors.redAccent,
             child: Icon(Icons.pin_drop, color: Colors.white),
           ),
@@ -448,63 +506,6 @@ class _AppServerState extends State<AppServer> {
         //         msg: 'Copied ${copiedAssets.length} items: $copiedAssets');
         //   },
         // ),
-        ListTile(
-          leading: const CircleAvatar(
-            backgroundColor: Colors.blue,
-            child: Icon(Icons.download_for_offline, color: Colors.white),
-          ),
-          subtitle: const Text('Download HTML project folder to device'),
-          title: const Text('Prepare server'),
-          onTap: () async {
-            setState(() => prepareServerStatus = ProcessStatus.started);
-
-            var isAlreadySetup = await HtmlContentSetup.isAlreadySetup();
-            // show alert dialog if already setup
-            if (isAlreadySetup) {
-              // ignore: use_build_context_synchronously
-              var res = await showDialog(
-                  context: context,
-                  builder: (_) {
-                    return AlertDialog(
-                      content: const Text(
-                          'Seems like the HTML project folder is already setup. Running the setup again will overwrite the existing files. Are you sure?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Yes'),
-                        ),
-                      ],
-                    );
-                  });
-
-              if (res == null || res == false) {
-                setState(() => prepareServerStatus = ProcessStatus.completed);
-                return;
-              }
-            }
-            try {
-              await HtmlContentSetup.setupHtmlContentFromGithub();
-              Fluttertoast.showToast(
-                  msg: 'Downloaded repo content successfully');
-            } catch (e) {
-              debugPrint(e.toString());
-              Fluttertoast.showToast(msg: 'Error occured: $e');
-            }
-            setState(() => prepareServerStatus = ProcessStatus.completed);
-          },
-          trailing: switch (prepareServerStatus) {
-            ProcessStatus.completed => null,
-            ProcessStatus.started => const SizedBox(
-                height: 25,
-                width: 25,
-                child: CircularProgressIndicator(),
-              ),
-          },
-        ),
       ],
     );
   }
