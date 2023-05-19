@@ -189,7 +189,7 @@ class HtmlContentSetup {
 
       return file.path;
     } else {
-      print('Download zip failed with status: ${response.statusCode}.');
+      debugPrint('Download zip failed with status: ${response.statusCode}.');
       throw Exception('Failed to download the zip file');
     }
   }

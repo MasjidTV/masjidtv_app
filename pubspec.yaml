@@ -74,14 +74,6 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
-    - assets/app_reserved/
-    - assets/db/
-    - assets/fonts/
-    - assets/src/prayer-h1/
-    - assets/src/prayer-h2/
-    - assets/src/prayer-v1/
-    - assets/src/script/
-    - assets/src/tarikh-widget/
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see

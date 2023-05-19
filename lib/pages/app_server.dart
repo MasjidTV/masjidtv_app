@@ -107,7 +107,7 @@ class _AppServerState extends State<AppServer> {
       final assetData = await bundle.load(assetPath);
       // remove the 'assets/' part from the path
       final correctedAssetPath = assetPath.replaceFirst('assets/', 'web/');
-      final file = File('${directory!.path}/$correctedAssetPath');
+      final file = File('${directory.path}/$correctedAssetPath');
       await file.create(recursive: true);
       await file.writeAsBytes(assetData.buffer.asUint8List());
 
@@ -424,8 +424,7 @@ class _AppServerState extends State<AppServer> {
           title: const Text('Prayer time zone'),
           onTap: () async {
             // read json from assets
-            final json = await rootBundle
-                .loadString('assets/app_reserved/jakim_zones.json');
+            final json = await rootBundle.loadString('assets/jakim_zones.json');
             var jakimZonesList = JakimZones.fromList(jsonDecode(json));
 
             // show dialog
