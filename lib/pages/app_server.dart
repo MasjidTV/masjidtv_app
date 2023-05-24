@@ -32,9 +32,7 @@ class AppServer extends StatefulWidget {
 class _AppServerState extends State<AppServer> {
   final NetworkInfo _networkInfo = NetworkInfo();
   ServerStatus _serverStatus = ServerStatus.stopped;
-  ServerStatus _backendServerStatus = ServerStatus.stopped;
-  int? htmlServerPort;
-  int? backendServerPort;
+  int? _htmlServerPort;
   ProcessStatus prepareServerStatus = ProcessStatus.completed;
   ProcessStatus setupZoneStatus = ProcessStatus.completed;
 
@@ -58,24 +56,9 @@ class _AppServerState extends State<AppServer> {
       _serverStatus = ServerStatus.stopping;
       debugPrint('Stopping server');
     });
-    // await Future.delayed(const Duration(seconds: 1));
-    await HtmlServer.stop();
-    setState(() {
-      _serverStatus = ServerStatus.stopped;
-    });
-    debugPrint('Stop server');
-  }
-
-  Future<void> _stopBackendServer() async {
-    setState(() {
-      _backendServerStatus = ServerStatus.stopping;
-      debugPrint('Stopping backend server');
-    });
-    await BackendServer.stop();
-    setState(() {
-      _backendServerStatus = ServerStatus.stopped;
-    });
-    debugPrint('Stop backend server');
+    await Future.wait([HtmlServer.stop(), BackendServer.stop()]);
+    setState(() => _serverStatus = ServerStatus.stopped);
+    Fluttertoast.showToast(msg: 'Servers stopped');
   }
 
   /// Copy the html project folder from flutter assets to device directory
@@ -192,10 +175,8 @@ class _AppServerState extends State<AppServer> {
     var dir = await MyStorage.getMasjidTvDirectory();
     var file = File('${dir.path}/config.json');
 
-    // read the file
+    // read & parse the file
     var content = await file.readAsString();
-
-    // parse the json
     var jsonContent = jsonDecode(content);
 
     // change the zone
@@ -218,7 +199,8 @@ class _AppServerState extends State<AppServer> {
                   setState(() => _serverStatus = ServerStatus.starting);
 
                   try {
-                    htmlServerPort = await HtmlServer.start();
+                    _htmlServerPort = await HtmlServer.start();
+                    await BackendServer.start();
                     setState(() => _serverStatus = ServerStatus.started);
                   } catch (e) {
                     setState(() => _serverStatus = ServerStatus.stopped);
@@ -270,66 +252,7 @@ class _AppServerState extends State<AppServer> {
               ),
           },
         ),
-        ListTile(
-          onTap: _backendServerStatus == ServerStatus.stopped
-              ? () async {
-                  setState(() => _backendServerStatus = ServerStatus.starting);
 
-                  try {
-                    backendServerPort = await BackendServer.start();
-                    setState(() => _backendServerStatus = ServerStatus.started);
-                  } catch (e) {
-                    setState(() => _backendServerStatus = ServerStatus.stopped);
-                    showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Error'),
-                        content: Text(e.toString()),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('OK'),
-                          )
-                        ],
-                      ),
-                    );
-                    return;
-                  }
-                }
-              : null,
-          onLongPress: _backendServerStatus == ServerStatus.started
-              ? _stopBackendServer
-              : null,
-          leading: const CircleAvatar(
-            backgroundColor: Colors.orange,
-            child: Icon(Icons.developer_board, color: Colors.white),
-          ),
-          title: Text(switch (_backendServerStatus) {
-            ServerStatus.stopped => 'MasjidTV Backend is stopped',
-            ServerStatus.stopping => 'Disposing server',
-            ServerStatus.started => 'Backend Server is running',
-            ServerStatus.starting => 'Starting server',
-          }),
-          subtitle: Text(
-            switch (_backendServerStatus) {
-              ServerStatus.stopped => 'Tap to start server',
-              ServerStatus.stopping => 'Please wait...',
-              ServerStatus.started =>
-                'Server listening on port $backendServerPort (Long press to stop server)',
-              ServerStatus.starting => 'Please wait...',
-            },
-          ),
-          trailing: switch (_backendServerStatus) {
-            ServerStatus.started => const Icon(Icons.stop, color: Colors.red),
-            ServerStatus.stopped =>
-              const Icon(Icons.play_arrow, color: Colors.green),
-            _ => const SizedBox(
-                height: 15,
-                width: 15,
-                child: CircularProgressIndicator(),
-              ),
-          },
-        ),
         if (_serverStatus == ServerStatus.started)
           ListTile(
             onTap: () {
@@ -349,7 +272,7 @@ class _AppServerState extends State<AppServer> {
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       return _NetworkText('On your network: ',
-                          '${snapshot.data}:$htmlServerPort');
+                          '${snapshot.data}:$_htmlServerPort');
                     }
                     return const _NetworkText('On your network: ', 'N/A');
                   },
