@@ -366,7 +366,18 @@ class _AppServerState extends State<AppServer> {
             await _writeZoneToConfigFile(selectedZone.jakimCode);
             debugPrint('Zone saved to config.json');
             setState(() => savedZone = selectedZone.jakimCode);
-            Fluttertoast.showToast(msg: "Zone saved");
+            Fluttertoast.showToast(
+                msg: "Zone saved. Downloading prayer time data...");
+
+            // download zone data
+            setState(() => setupZoneStatus = ProcessStatus.started);
+            try {
+              await _setupZone(savedZone!);
+              Fluttertoast.showToast(msg: "Data downloaded");
+            } catch (e) {
+              Fluttertoast.showToast(msg: "Error while setup zone: $e");
+            }
+            setState(() => setupZoneStatus = ProcessStatus.completed);
           },
         ),
         ListTile(
@@ -396,15 +407,6 @@ class _AppServerState extends State<AppServer> {
                 return const Text('N/A');
               }),
           title: const Text('Prayer time database'),
-          onTap: () async {
-            setState(() => setupZoneStatus = ProcessStatus.started);
-            try {
-              await _setupZone(savedZone!);
-            } catch (e) {
-              Fluttertoast.showToast(msg: "Error while setup zone: $e");
-            }
-            setState(() => setupZoneStatus = ProcessStatus.completed);
-          },
           trailing: switch (setupZoneStatus) {
             ProcessStatus.completed => null,
             ProcessStatus.started => const SizedBox(
