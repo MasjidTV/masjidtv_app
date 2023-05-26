@@ -2,12 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants.dart';
+import '../pages/app_settings.dart';
 import 'my_storage.dart';
 
 class HtmlContentSetup {
@@ -24,7 +28,24 @@ class HtmlContentSetup {
     if (!permissionStatus.isGranted) {
       await Permission.manageExternalStorage.request();
     }
-    var zipRepo = await _downloadGithubRepo();
+
+    // for default repo
+    var owner = 'iqfareez';
+    var repo = 'masjidTV-waktusolat';
+
+    // check setting for GitHub Source
+    final sp = await SharedPreferences.getInstance();
+    final githubSource =
+        GithubSource.values.byName(sp.getString(kSpGithubSource)!);
+
+    if (githubSource == GithubSource.Custom) {
+      var customUrl = sp.getString(kSpCustomGithubUrl);
+      (owner, repo) = _retrieveGitHubOwnerRepo(customUrl!);
+    }
+
+    Fluttertoast.showToast(msg: "Downloading from $owner/$repo");
+
+    var zipRepo = await _downloadGithubRepo(owner: owner, repo: repo);
     if (zipRepo == null) {
       throw Exception(
           'No path is returned. Possibly the repo download has failed?');
@@ -39,11 +60,13 @@ class HtmlContentSetup {
 
     debugPrint('moving to $extractDir');
 
-    await _moveContentsToDestinationDirectory(extractedPath, extractDir.path);
+    await _moveContentsToDestinationDirectory(extractedPath, extractDir.path,
+        ownerRepo: '$owner-$repo');
   }
 
   static Future<void> _moveContentsToDestinationDirectory(
-      String sourceDirectoryPath, String destinationDirectoryPath) async {
+      String sourceDirectoryPath, String destinationDirectoryPath,
+      {required String ownerRepo}) async {
     Directory sourceDirectory = Directory(sourceDirectoryPath);
     Directory destinationDirectory = Directory(destinationDirectoryPath);
 
@@ -71,9 +94,11 @@ class HtmlContentSetup {
     for (FileSystemEntity content in contents) {
       debugPrint(content.path);
       if (content is Directory) {
-        await _copyDirectoryToDestination(content, destinationDirectory);
+        await _copyDirectoryToDestination(content, destinationDirectory,
+            ownerRepo: ownerRepo);
       } else if (content is File) {
-        await _copyFileToDestination(content, destinationDirectory);
+        await _copyFileToDestination(content, destinationDirectory,
+            ownerRepo: ownerRepo);
       }
     }
 
@@ -82,36 +107,44 @@ class HtmlContentSetup {
   }
 
   static Future<void> _copyDirectoryToDestination(
-      Directory sourceDirectory, Directory destinationDirectory) async {
+      Directory sourceDirectory, Directory destinationDirectory,
+      {required ownerRepo}) async {
     var tempCorrectedPath = destinationDirectory.path.split('/');
-    tempCorrectedPath.removeWhere(
-        (element) => element.contains("iqfareez-masjidTV-waktusolat"));
-    var correctedDirectory = Directory(tempCorrectedPath.join('/'));
-    String sourceDirectoryName = sourceDirectory.path.split('/').last;
-    String destinationDirectoryPath =
-        '${correctedDirectory.path}/$sourceDirectoryName';
-    Directory destinationSubDirectory = Directory(destinationDirectoryPath);
     // remove the first directory name
     // ie: /web/iqfareez-masjidTV-waktusolat-cb802722d1e5152df3be7b29d286a08ef162f68e
     // to /web
-    await destinationSubDirectory.create(recursive: true);
+    tempCorrectedPath.removeWhere((element) => element.contains(ownerRepo));
+    var correctedDirectory = Directory(tempCorrectedPath.join('/'));
+    String sourceDirectoryName = sourceDirectory.path.split('/').last;
+
+    String destinationDirectoryPath =
+        '${correctedDirectory.path}/$sourceDirectoryName';
+    Directory destinationSubDirectory = Directory(destinationDirectoryPath);
+
+    // if the directory is an empty folder left by the unzipping process (usually the
+    // folder name is based on owner-repo-commit name), we want to skip it
+    if (!sourceDirectoryName.startsWith(ownerRepo)) {
+      await destinationSubDirectory.create(recursive: true);
+    }
 
     List<FileSystemEntity> contents = sourceDirectory.listSync();
 
     for (FileSystemEntity content in contents) {
       if (content is Directory) {
-        await _copyDirectoryToDestination(content, destinationSubDirectory);
+        await _copyDirectoryToDestination(content, destinationSubDirectory,
+            ownerRepo: ownerRepo);
       } else if (content is File) {
-        await _copyFileToDestination(content, destinationSubDirectory);
+        await _copyFileToDestination(content, destinationSubDirectory,
+            ownerRepo: ownerRepo);
       }
     }
   }
 
   static Future<void> _copyFileToDestination(
-      File sourceFile, Directory destinationDirectory) async {
+      File sourceFile, Directory destinationDirectory,
+      {required ownerRepo}) async {
     var tempCorrectedPath = destinationDirectory.path.split('/');
-    tempCorrectedPath.removeWhere(
-        (element) => element.contains("iqfareez-masjidTV-waktusolat"));
+    tempCorrectedPath.removeWhere((element) => element.contains(ownerRepo));
     var correctedDirectory = Directory(tempCorrectedPath.join('/'));
     String fileName = sourceFile.path.split('/').last;
     File destinationFile = File('${correctedDirectory.path}/$fileName');
@@ -158,21 +191,28 @@ class HtmlContentSetup {
     return extractPath;
   }
 
-  static Future<String?> _downloadGithubRepo() async {
+  static Future<String?> _downloadGithubRepo(
+      {required String owner, required String repo}) async {
     var githubApiKey = dotenv.env['GH_REPO_PAT'];
 
     debugPrint('key: $githubApiKey');
+    var headers = {
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
 
-    const owner = 'iqfareez';
-    const repo = 'masjidTV-waktusolat';
+    // check setting for GitHub Source
+    final sp = await SharedPreferences.getInstance();
+    final githubSource =
+        GithubSource.values.byName(sp.getString(kSpGithubSource)!);
+
+    if (githubSource == GithubSource.Default) {
+      headers.addAll({"Authorization": 'Bearer $githubApiKey'});
+    }
 
     final response = await http.get(
       Uri.parse('https://api.github.com/repos/$owner/$repo/zipball'),
-      headers: {
-        "Accept": "application/vnd.github+json",
-        "Authorization": 'Bearer $githubApiKey',
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
+      headers: headers,
     );
     if (response.statusCode == 200) {
       final bytes = response.bodyBytes;
@@ -193,4 +233,25 @@ class HtmlContentSetup {
       throw Exception('Failed to download the zip file');
     }
   }
+}
+
+/// Extract the owner and repo information from Github URL
+(String, String) _retrieveGitHubOwnerRepo(String url) {
+  String owner = '';
+  String repo = '';
+
+  // Remove .git extension from URL, if present
+  if (url.endsWith('.git')) {
+    url = url.substring(0, url.length - 4);
+  }
+
+  // Extract owner and repo from the URL
+  Uri uri = Uri.parse(url);
+  List<String> pathSegments = uri.pathSegments;
+  if (pathSegments.length >= 2) {
+    owner = pathSegments[0];
+    repo = pathSegments[1];
+  }
+
+  return (owner, repo);
 }

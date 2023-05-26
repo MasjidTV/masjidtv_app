@@ -118,12 +118,15 @@ class _AppServerState extends State<AppServer> {
 
     for (var i = 0; i < 12; i++) {
       var targetMonthYear = _addOneMonth(now, monthCount: i);
-      var url = Uri.parse(
-          'https://mpt-server-8n6eljjbx-iqfareez.vercel.app/api/v2/solat/$jakimZone?year=${targetMonthYear.year}&month=${targetMonthYear.month}'); // Replace with your API URL
-      debugPrint('Started fetching $url');
+
+      var uri = Uri.https('mpt-server.vercel.app', '/api/v2/solat/$jakimZone', {
+        'year': '${targetMonthYear.year}',
+        'month': '${targetMonthYear.month}'
+      });
+      debugPrint('Started fetching $uri');
       debugPrint('for month ${targetMonthYear.month}-${targetMonthYear.year}');
 
-      var response = await http.get(url);
+      var response = await http.get(uri);
       if (response.statusCode == 200) {
         var jsonResponse = json.decode(response.body);
 
