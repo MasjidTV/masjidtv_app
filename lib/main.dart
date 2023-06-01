@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:masjidtv_app/services/server_task_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'constants.dart';
 import 'home.dart';
 import 'pages/app_settings.dart';
+
+// The callback function should always be a top-level function.
+@pragma('vm:entry-point')
+void startCallback() {
+  // The setTaskHandler function must be called to handle the task in the background.
+  FlutterForegroundTask.setTaskHandler(MyTaskHandler());
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
