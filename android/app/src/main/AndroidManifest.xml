@@ -4,11 +4,15 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:label="MasjidTV App"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
@@ -31,6 +35,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- https://github.com/JulianAssmann/flutter_background/issues/69#issuecomment-1490103122 -->
+        <service
+            android:name="de.julianassmann.flutter_background.IsolateHolderService"
+            android:exported="false" />
+
         <receiver
             android:enabled="true"
             android:exported="true"
@@ -42,7 +52,6 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-
         </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

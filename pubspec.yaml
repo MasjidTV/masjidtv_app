@@ -37,6 +37,7 @@ dependencies:
   archive: ^3.3.7
   flutter_dotenv: ^5.0.2
   fluttertoast: ^8.2.1
+  flutter_background: ^1.2.0
   font_awesome_flutter: ^10.4.0
   http: ^0.13.6
   path_provider: ^2.0.15

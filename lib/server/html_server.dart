@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_static/shelf_static.dart';
@@ -13,6 +14,10 @@ import 'backend_server.dart';
 class HtmlServer {
   static HttpServer? _server;
   static Future<int> start() async {
+    var permissionStatus = await Permission.manageExternalStorage.status;
+    if (!permissionStatus.isGranted) {
+      await Permission.manageExternalStorage.request();
+    }
     // Serve the device directory.
     var htmlProjectDir = await MyStorage.getMasjidTvDirectory();
     var handler =
