@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_background/flutter_background.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path/path.dart';
@@ -42,6 +43,17 @@ class _AppServerState extends State<AppServer> {
   void initState() {
     super.initState();
     _loadSaveZone();
+
+    // post frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // check if the html content is already setup
+      if (await FlutterBackground.hasPermissions) {
+        if (_serverStatus != ServerStatus.started &&
+            await HtmlContentSetup.isAlreadySetup()) {
+          _startAllServer();
+        }
+      }
+    });
   }
 
   void _loadSaveZone() async {
@@ -59,6 +71,7 @@ class _AppServerState extends State<AppServer> {
     await Future.wait([HtmlServer.stop(), BackendServer.stop()]);
     setState(() => _serverStatus = ServerStatus.stopped);
     Fluttertoast.showToast(msg: 'Servers stopped');
+    FlutterBackground.disableBackgroundExecution();
   }
 
   /// Copy the html project folder from flutter assets to device directory
@@ -192,38 +205,34 @@ class _AppServerState extends State<AppServer> {
     await file.writeAsString(newContent);
   }
 
+  void _startAllServer() async {
+    setState(() => _serverStatus = ServerStatus.starting);
+
+    if (!await HtmlContentSetup.isAlreadySetup()) {
+      Fluttertoast.showToast(msg: "Please 'Prepare server' before continue");
+      setState(() => _serverStatus = ServerStatus.stopped);
+      return;
+    }
+
+    try {
+      _htmlServerPort = await HtmlServer.start();
+      await BackendServer.start();
+      await FlutterBackground.enableBackgroundExecution();
+
+      setState(() => _serverStatus = ServerStatus.started);
+    } catch (e) {
+      setState(() => _serverStatus = ServerStatus.stopped);
+      Fluttertoast.showToast(msg: e.toString());
+      return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         ListTile(
-          onTap: _serverStatus == ServerStatus.stopped
-              ? () async {
-                  setState(() => _serverStatus = ServerStatus.starting);
-
-                  try {
-                    _htmlServerPort = await HtmlServer.start();
-                    await BackendServer.start();
-                    setState(() => _serverStatus = ServerStatus.started);
-                  } catch (e) {
-                    setState(() => _serverStatus = ServerStatus.stopped);
-                    showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Error'),
-                        content: Text(e.toString()),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('OK'),
-                          )
-                        ],
-                      ),
-                    );
-                    return;
-                  }
-                }
-              : null,
+          onTap: _serverStatus == ServerStatus.stopped ? _startAllServer : null,
           onLongPress:
               _serverStatus == ServerStatus.started ? _stopServer : null,
           leading: const CircleAvatar(

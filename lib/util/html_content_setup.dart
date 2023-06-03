@@ -17,9 +17,12 @@ import 'my_storage.dart';
 class HtmlContentSetup {
   /// Check if was already setup
   static Future<bool> isAlreadySetup() async {
-    final directory = await getExternalStorageDirectory();
-    var webDir = Directory(p.join(directory!.path, 'web'));
-    return await webDir.exists();
+    final directory = await MyStorage.getMasjidTvDirectory();
+    if (!await directory.exists()) return false;
+    // check if contain index.html
+    var files = await directory.list().toList();
+    return files.isNotEmpty &&
+        files.any((element) => element.path.contains('index.html'));
   }
 
   /// Download repo from github and extract it to the 'web' folder
