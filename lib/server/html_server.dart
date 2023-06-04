@@ -37,6 +37,8 @@ class HtmlServer {
   }
 
   static String get url => 'http://${_server!.address.host}:${_server!.port}';
+  static String get host => _server!.address.host;
+  static int get port => _server!.port;
 
   static Response _echoRequest(Request request) {
     // Create a plain text response with the request body.

@@ -262,37 +262,6 @@ class _AppServerState extends State<AppServer> {
     }
   }
 
-  List<String> _generateListOfExpectedFiles(String currentZone) {
-    final currentDate = DateTime.now();
-    final currentMonth = currentDate.month;
-    final currentYear = currentDate.year;
-
-    final endMonth = currentMonth - 1;
-    final endYear = currentYear + 1;
-
-    List<String> filledList = [];
-
-    // Iterate through the years from the current year to the end year
-    for (int year = currentYear; year <= endYear; year++) {
-      // Set the start month to 1 for the current year
-      int startMonth = (year == currentYear) ? currentMonth : 1;
-
-      // Set the end month to 12 for the end year
-      int loopEndMonth = (year == endYear) ? endMonth : 12;
-
-      // Iterate through the months from the start month to the end month
-      for (int month = startMonth; month <= loopEndMonth; month++) {
-        // Format the month and year into "MM-yyyy" format
-        String fileName = "${currentZone.toUpperCase()}-$month-$year";
-
-        // Add the file name to the filledList
-        filledList.add(fileName);
-      }
-    }
-
-    return filledList;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -334,7 +303,7 @@ class _AppServerState extends State<AppServer> {
         if (_serverStatus == ServerStatus.started)
           ListTile(
             onTap: () {
-              LinkLauncher.launch(HtmlServer.url);
+              LinkLauncher.launch('http://127.0.0.1:${HtmlServer.port}');
             },
             leading: const CircleAvatar(
               backgroundColor: Colors.indigo,
@@ -344,7 +313,7 @@ class _AppServerState extends State<AppServer> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _NetworkText('Local: ', HtmlServer.url),
+                _NetworkText('Local: ', '127.0.0.1:${HtmlServer.port}'),
                 FutureBuilder(
                   future: _networkInfo.getWifiIP(),
                   builder: (context, snapshot) {
