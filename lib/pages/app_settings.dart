@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
 import '../server/backend_server.dart';
+import '../util/notification_scheduler.dart';
 
 // ignore: constant_identifier_names
 enum GithubSource { Default, Custom }
@@ -17,8 +19,12 @@ class AppSettings extends StatefulWidget {
 }
 
 class _AppSettingsState extends State<AppSettings> {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
   final TextEditingController _portEditingController = TextEditingController();
   final TextEditingController _githubUrlController = TextEditingController();
+
+  bool _notificationEnabled = false;
 
   GithubSource _githubSource = GithubSource.Default;
   @override
@@ -157,6 +163,40 @@ class _AppSettingsState extends State<AppSettings> {
                   const Text('Custom GitHub repository URL (Public repo)'),
             ),
           ),
+          const Divider(),
+          SwitchListTile(
+            secondary: const CircleAvatar(
+              backgroundColor: Colors.pink,
+              child: Icon(Icons.notifications, color: Colors.white),
+            ),
+            title: const Text("Notification"),
+            value: _notificationEnabled,
+            onChanged: (value) async {
+              if (value) {
+                var res = await flutterLocalNotificationsPlugin
+                    .resolvePlatformSpecificImplementation<
+                        AndroidFlutterLocalNotificationsPlugin>()!
+                    .requestPermission();
+
+                if (res ?? false) {
+                  setState(() => _notificationEnabled = true);
+                  Fluttertoast.showToast(msg: "Notification is enabled");
+                  try {
+                    await NotificationScheduler.scheduleBeepForCurrentMonth();
+                  } catch (e) {
+                    Fluttertoast.showToast(
+                        msg: "Error when scheduling notification: $e");
+                  }
+                } else {
+                  Fluttertoast.showToast(msg: "Notification cannot be enabled");
+                  setState(() => _notificationEnabled = false);
+                }
+              } else {
+                Fluttertoast.showToast(msg: "Notification has been disabled");
+                setState(() => _notificationEnabled = false);
+              }
+            },
+          )
         ],
       ),
     );
