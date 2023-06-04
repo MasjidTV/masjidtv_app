@@ -31,7 +31,8 @@ class AppServer extends StatefulWidget {
   State<AppServer> createState() => _AppServerState();
 }
 
-class _AppServerState extends State<AppServer> {
+class _AppServerState extends State<AppServer>
+    with AutomaticKeepAliveClientMixin<AppServer> {
   final NetworkInfo _networkInfo = NetworkInfo();
   ServerStatus _serverStatus = ServerStatus.stopped;
   int? _htmlServerPort;
@@ -282,6 +283,7 @@ class _AppServerState extends State<AppServer> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       children: [
         ListTile(
@@ -480,6 +482,21 @@ class _AppServerState extends State<AppServer> {
                 child: CircularProgressIndicator(),
               ),
           },
+          onTap: () async {
+            if (savedZone == null) {
+              Fluttertoast.showToast(msg: 'Please set zone first');
+              return;
+            }
+            // download zone data
+            setState(() => setupZoneStatus = ProcessStatus.started);
+            try {
+              await _setupZone(savedZone!);
+              Fluttertoast.showToast(msg: "Data downloaded");
+            } catch (e) {
+              Fluttertoast.showToast(msg: "Error while setup zone: $e");
+            }
+            setState(() => setupZoneStatus = ProcessStatus.completed);
+          },
         ),
         // ListTile(
         //   leading: const CircleAvatar(
@@ -498,6 +515,9 @@ class _AppServerState extends State<AppServer> {
       ],
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
 
 class _NetworkText extends StatelessWidget {

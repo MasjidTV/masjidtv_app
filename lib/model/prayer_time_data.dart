@@ -16,7 +16,7 @@ class PrayerTimeData {
     if (json['prayers'] != null) {
       prayers = <Prayers>[];
       json['prayers'].forEach((v) {
-        prayers!.add(new Prayers.fromJson(v));
+        prayers!.add(Prayers.fromJson(v));
       });
     }
   }
