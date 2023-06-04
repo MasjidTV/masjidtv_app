@@ -79,6 +79,24 @@ class _AppServerState extends State<AppServer> {
     });
   }
 
+  /// https://pub.dev/packages/flutter_background
+  Future<void> _initializeFlutterBackground() async {
+    var androidConfig = const FlutterBackgroundAndroidConfig(
+      notificationTitle: "Masjid TV server is running",
+      notificationText:
+          "Background notification for keeping the example app running in the background",
+      notificationImportance: AndroidNotificationImportance.Default,
+      shouldRequestBatteryOptimizationsOff: true,
+      notificationIcon: AndroidResource(
+          name: 'background_icon',
+          defType: 'drawable'), // Default is ic_launcher from folder mipmap
+    );
+    bool success =
+        await FlutterBackground.initialize(androidConfig: androidConfig);
+
+    if (!success) debugPrint("Failed to initialize FlutterBackground");
+  }
+
   void _loadSaveZone() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -252,8 +270,8 @@ class _AppServerState extends State<AppServer> {
     try {
       _htmlServerPort = await HtmlServer.start();
       await BackendServer.start();
+      await _initializeFlutterBackground();
       await FlutterBackground.enableBackgroundExecution();
-
       setState(() => _serverStatus = ServerStatus.started);
     } catch (e) {
       setState(() => _serverStatus = ServerStatus.stopped);

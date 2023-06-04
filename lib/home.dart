@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_background/flutter_background.dart';
 
 import 'pages/app_about.dart';
 import 'pages/app_server.dart';
@@ -25,30 +24,6 @@ class _HomeState extends State<Home> {
     setState(() {
       _selectedIndex = index;
     });
-  }
-
-  /// https://pub.dev/packages/flutter_background
-  Future<void> initializeFlutterBackground() async {
-    var androidConfig = const FlutterBackgroundAndroidConfig(
-      notificationTitle: "Masjid TV server is running",
-      notificationText:
-          "Background notification for keeping the example app running in the background",
-      notificationImportance: AndroidNotificationImportance.Default,
-      shouldRequestBatteryOptimizationsOff: true,
-      notificationIcon: AndroidResource(
-          name: 'background_icon',
-          defType: 'drawable'), // Default is ic_launcher from folder mipmap
-    );
-    bool success =
-        await FlutterBackground.initialize(androidConfig: androidConfig);
-
-    if (!success) debugPrint("Failed to initialize FlutterBackground");
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    initializeFlutterBackground();
   }
 
   @override
