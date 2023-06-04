@@ -113,8 +113,7 @@ class NotificationScheduler {
       when: scheduledTime.millisecondsSinceEpoch,
       playSound: true,
       category: AndroidNotificationCategory.alarm,
-      sound: const RawResourceAndroidNotificationSound(
-          "511492__andersmmg__double-beep"),
+      sound: const RawResourceAndroidNotificationSound("andersmmg_double_beep"),
       color: Colors.purple,
     );
     var platformChannelSpecifics =
