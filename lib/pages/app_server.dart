@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background/flutter_background.dart';
@@ -43,6 +44,28 @@ class _AppServerState extends State<AppServer> {
   void initState() {
     super.initState();
     _loadSaveZone();
+
+    // check and download for new zone data if available
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (savedZone != null) {
+        // check wether connected to network
+        final connectivityResult = await (Connectivity().checkConnectivity());
+        if (connectivityResult == ConnectivityResult.none) {
+          Fluttertoast.showToast(
+              msg:
+                  "No internet connection. Skipping checking for new zone data");
+          return;
+        }
+        // download zone data
+        setState(() => setupZoneStatus = ProcessStatus.started);
+        try {
+          await _setupZone(savedZone!);
+        } catch (e) {
+          Fluttertoast.showToast(msg: "Error while setup zone: $e");
+        }
+        setState(() => setupZoneStatus = ProcessStatus.completed);
+      }
+    });
 
     // post frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -131,6 +154,18 @@ class _AppServerState extends State<AppServer> {
 
     for (var i = 0; i < 12; i++) {
       var targetMonthYear = _addOneMonth(now, monthCount: i);
+
+      var fileName =
+          '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json';
+
+      // check if the file already exist
+      final dir = await MyStorage.getMasjidTvDirectory();
+      final dbFile = join(dir.path, 'db', fileName);
+      final file = File(dbFile);
+      if (await file.exists()) {
+        debugPrint('File $fileName already exist, skipping');
+        continue;
+      }
 
       var uri = Uri.https('mpt-server.vercel.app', '/api/v2/solat/$jakimZone', {
         'year': '${targetMonthYear.year}',
@@ -225,6 +260,37 @@ class _AppServerState extends State<AppServer> {
       Fluttertoast.showToast(msg: e.toString());
       return;
     }
+  }
+
+  List<String> _generateListOfExpectedFiles(String currentZone) {
+    final currentDate = DateTime.now();
+    final currentMonth = currentDate.month;
+    final currentYear = currentDate.year;
+
+    final endMonth = currentMonth - 1;
+    final endYear = currentYear + 1;
+
+    List<String> filledList = [];
+
+    // Iterate through the years from the current year to the end year
+    for (int year = currentYear; year <= endYear; year++) {
+      // Set the start month to 1 for the current year
+      int startMonth = (year == currentYear) ? currentMonth : 1;
+
+      // Set the end month to 12 for the end year
+      int loopEndMonth = (year == endYear) ? endMonth : 12;
+
+      // Iterate through the months from the start month to the end month
+      for (int month = startMonth; month <= loopEndMonth; month++) {
+        // Format the month and year into "MM-yyyy" format
+        String fileName = "${currentZone.toUpperCase()}-$month-$year";
+
+        // Add the file name to the filledList
+        filledList.add(fileName);
+      }
+    }
+
+    return filledList;
   }
 
   @override
