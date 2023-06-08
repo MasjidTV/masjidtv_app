@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:http/http.dart' as http;
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 
 import '../components/zone_selector.dart';
 import '../constants.dart';
@@ -87,7 +87,7 @@ class _AppServerState extends State<AppServer>
       notificationText:
           "Background notification for keeping the example app running in the background",
       notificationImportance: AndroidNotificationImportance.Default,
-      shouldRequestBatteryOptimizationsOff: true,
+      shouldRequestBatteryOptimizationsOff: false,
       notificationIcon: AndroidResource(
           name: 'background_icon',
           defType: 'drawable'), // Default is ic_launcher from folder mipmap
@@ -353,7 +353,15 @@ class _AppServerState extends State<AppServer>
             backgroundColor: Colors.blue,
             child: Icon(Icons.download_for_offline, color: Colors.white),
           ),
-          subtitle: const Text('Download HTML project folder to device'),
+          subtitle: FutureBuilder(
+              future: HtmlContentSetup.isAlreadySetup(),
+              builder: (context, AsyncSnapshot<bool> snapshot) {
+                if (snapshot.hasData && snapshot.data!) {
+                  var saveLocation = MyStorage.getMasjidTvDirectory().path;
+                  return Text("Saved in $saveLocation");
+                }
+                return const Text('Download HTML project folder to device');
+              }),
           title: const Text('Prepare server'),
           onTap: () async {
             setState(() => prepareServerStatus = ProcessStatus.started);
@@ -392,7 +400,7 @@ class _AppServerState extends State<AppServer>
                   msg: 'Downloaded repo content successfully');
             } catch (e) {
               debugPrint(e.toString());
-              Fluttertoast.showToast(msg: 'Error occured: $e');
+              Fluttertoast.showToast(msg: 'Error occurred: $e');
             }
             setState(() => prepareServerStatus = ProcessStatus.completed);
           },

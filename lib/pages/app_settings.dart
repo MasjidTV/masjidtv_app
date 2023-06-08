@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -7,9 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
 import '../server/backend_server.dart';
 import '../util/notification_scheduler.dart';
-
-// ignore: constant_identifier_names
-enum GithubSource { Default, Custom }
 
 class AppSettings extends StatefulWidget {
   const AppSettings({super.key});
@@ -26,7 +24,6 @@ class _AppSettingsState extends State<AppSettings> {
 
   bool _notificationEnabled = false;
 
-  GithubSource _githubSource = GithubSource.Default;
   @override
   void initState() {
     super.initState();
@@ -42,13 +39,7 @@ class _AppSettingsState extends State<AppSettings> {
       _portEditingController.text = port.toString();
     }
 
-    var savedGithubSource = prefs.getString(kSpGithubSource);
-    if (savedGithubSource != null) {
-      _githubSource = GithubSource.values.byName(savedGithubSource);
-      setState(() {});
-    }
-
-    var savedGithubUrl = prefs.getString(kSpCustomGithubUrl);
+    var savedGithubUrl = prefs.getString(kSpGithubUrl);
     if (savedGithubUrl != null) {
       _githubUrlController.text = savedGithubUrl;
     }
@@ -113,56 +104,149 @@ class _AppSettingsState extends State<AppSettings> {
               backgroundColor: Colors.black87,
               child: FaIcon(FontAwesomeIcons.github, color: Colors.white),
             ),
-            subtitle: const Text('Repo to download HTML files from'),
-            title: const Text('Source repository'),
-            trailing: DropdownButton<GithubSource>(
-              value: _githubSource,
-              onChanged: (GithubSource? value) async {
-                // This is called when the user selects an item.
-                setState(() => _githubSource = value!);
-                final sp = await SharedPreferences.getInstance();
-                await sp.setString(kSpGithubSource, value!.name);
-                Fluttertoast.showToast(msg: "Saved Github source option");
-              },
-              items: GithubSource.values
-                  .map<DropdownMenuItem<GithubSource>>((GithubSource value) {
-                return DropdownMenuItem(
-                  value: value,
-                  child: Text(value.name),
-                );
-              }).toList(),
-            ),
-          ),
-          IgnorePointer(
-            ignoring: _githubSource != GithubSource.Custom,
-            child: ListTile(
-              enabled: _githubSource == GithubSource.Custom,
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                child: FaIcon(
-                  FontAwesomeIcons.link,
-                  color: _githubSource != GithubSource.Custom
-                      ? Colors.black26
-                      : null,
-                ),
-              ),
-              title: TextField(
-                controller: _githubUrlController,
-                onSubmitted: (value) async {
-                  // Check and add the https:// prefix if missing
-                  if (!value.startsWith('http')) {
-                    value = 'https://$value';
+            subtitle: FutureBuilder(
+                future: SharedPreferences.getInstance(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Text(snapshot.data!.getString(kSpGithubUrl) ?? '');
                   }
-                  // save the sp
+                  return const Text('Repo to download HTML files from');
+                }),
+            title: const Text('Source repository'),
+            trailing: IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: () async {
+                var res = await showDialog(
+                  context: context,
+                  builder: (_) {
+                    final controller = TextEditingController();
+                    return AlertDialog(
+                      title: Text("Source repository"),
+                      content: TextField(controller: controller),
+                      actions: [
+                        TextButton(
+                            onPressed: () {
+                              Navigator.pop(context,
+                                  'https://github.com/iqfareez/masjidTV-waktusolat');
+                            },
+                            child: Text("Set default")),
+                        TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text("Cancel")),
+                        TextButton(
+                            onPressed: () {
+                              if (controller.text.isEmpty) {
+                                Fluttertoast.showToast(
+                                    msg: "Please enter a valid URL");
+                                return;
+                              }
+                              Navigator.pop(context, controller.text);
+                            },
+                            child: Text("Save")),
+                      ],
+                    );
+                  },
+                );
+
+                if (res != null) {
                   final sp = await SharedPreferences.getInstance();
-                  await sp.setString(kSpCustomGithubUrl, value);
-                  Fluttertoast.showToast(msg: "Custom Github URL is saved");
-                },
-              ),
-              subtitle:
-                  const Text('Custom GitHub repository URL (Public repo)'),
+                  await sp.setString(kSpGithubUrl, res);
+                  Fluttertoast.showToast(msg: "Github URL is saved");
+                  setState(() {});
+                }
+              },
             ),
           ),
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.blue,
+              child: Icon(Icons.key, color: Colors.white),
+            ),
+            title: Text("Repository Key"),
+            subtitle: const Text('Only for a private repository'),
+            onTap: () async {
+              var res = await showDialog(
+                context: context,
+                builder: (_) {
+                  final controller = TextEditingController();
+                  return AlertDialog(
+                    title: Text("Repository Key"),
+                    content: TextField(
+                      controller: controller,
+                    ),
+                    actions: [
+                      TextButton(
+                          onPressed: () {
+                            Navigator.pop(context, dotenv.env['GH_REPO_PAT']);
+                          },
+                          child: Text("Set default")),
+                      TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: Text("Cancel")),
+                      TextButton(
+                          onPressed: () {
+                            if (controller.text.isEmpty) {
+                              Fluttertoast.showToast(
+                                  msg: "Please enter a valid key");
+                              return;
+                            }
+                            Navigator.pop(context, controller.text);
+                          },
+                          child: Text("Save")),
+                    ],
+                  );
+                },
+              );
+
+              if (res != null) {
+                final sp = await SharedPreferences.getInstance();
+                await sp.setString(kSpGithubKey, res);
+                Fluttertoast.showToast(msg: "Github Key is saved");
+                setState(() {});
+              }
+            },
+          ),
+          // const Divider(),
+          // ListTile(
+          //   isThreeLine: true,
+          //   leading: const CircleAvatar(
+          //     backgroundColor: Colors.green,
+          //     child: Icon(Icons.folder_zip, color: Colors.white),
+          //   ),
+          //   subtitle: Text(MyStorage.getMasjidTvDirectory().path),
+          //   title: const Text("Download location"),
+          //   trailing: IconButton(
+          //     icon: const Icon(Icons.edit),
+          //     onPressed: () async {
+          //       final dirOptions =
+          //           await MyStorage.getAvailableMasjidTvDirectory();
+          //       showDialog(
+          //           context: context,
+          //           builder: (_) {
+          //             return SimpleDialog(
+          //               title: const Text("Select download location"),
+          //               children: dirOptions
+          //                   .map((e) => SimpleDialogOption(
+          //                         child: Text(e.path),
+          //                         onPressed: () async {
+          //                           await MyStorage.setMasjidTvDirectory(
+          //                               e.path);
+          //                           Navigator.pop(context);
+          //                           Fluttertoast.showToast(
+          //                               msg: "Download location is saved");
+          //                           setState(() {});
+          //                         },
+          //                       ))
+          //                   .toList(),
+          //             );
+          //           });
+          //     },
+          //   ),
+          // ),
           const Divider(),
           SwitchListTile(
             secondary: const CircleAvatar(

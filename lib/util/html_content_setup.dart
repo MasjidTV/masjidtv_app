@@ -1,17 +1,15 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:archive/archive_io.dart';
+import 'package:flutter/foundation.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
-import '../pages/app_settings.dart';
 import 'my_storage.dart';
 
 class HtmlContentSetup {
@@ -38,13 +36,9 @@ class HtmlContentSetup {
 
     // check setting for GitHub Source
     final sp = await SharedPreferences.getInstance();
-    final githubSource =
-        GithubSource.values.byName(sp.getString(kSpGithubSource)!);
 
-    if (githubSource == GithubSource.Custom) {
-      var customUrl = sp.getString(kSpCustomGithubUrl);
-      (owner, repo) = _retrieveGitHubOwnerRepo(customUrl!);
-    }
+    var ghRepoUrl = sp.getString(kSpGithubUrl);
+    (owner, repo) = _retrieveGitHubOwnerRepo(ghRepoUrl!);
 
     Fluttertoast.showToast(msg: "Downloading from $owner/$repo");
 
@@ -59,7 +53,7 @@ class HtmlContentSetup {
     var extractedPath = await _extractZipToStorage(zipFilePath: zipRepo);
 
     // Extract the tar file to the device folder
-    var extractDir = await MyStorage.getMasjidTvDirectory();
+    var extractDir = MyStorage.getMasjidTvDirectory();
 
     debugPrint('moving to $extractDir');
 
@@ -196,7 +190,7 @@ class HtmlContentSetup {
 
   static Future<String?> _downloadGithubRepo(
       {required String owner, required String repo}) async {
-    var githubApiKey = dotenv.env['GH_REPO_PAT'];
+    String? githubApiKey;
 
     debugPrint('key: $githubApiKey');
     var headers = {
@@ -206,10 +200,12 @@ class HtmlContentSetup {
 
     // check setting for GitHub Source
     final sp = await SharedPreferences.getInstance();
-    final githubSource =
-        GithubSource.values.byName(sp.getString(kSpGithubSource)!);
 
-    if (githubSource == GithubSource.Default) {
+    if (sp.getString(kSpGithubKey) != null) {
+      githubApiKey = sp.getString(kSpGithubKey);
+    }
+
+    if (githubApiKey != null) {
       headers.addAll({"Authorization": 'Bearer $githubApiKey'});
     }
 

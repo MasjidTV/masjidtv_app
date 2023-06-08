@@ -7,7 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'constants.dart';
 import 'home.dart';
-import 'pages/app_settings.dart';
+import 'util/my_storage.dart';
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -34,9 +34,16 @@ void main() async {
   // init default settings
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   if (!prefs.containsKey(kSpServerPort)) prefs.setInt(kSpServerPort, 8080);
-  if (!prefs.containsKey(kSpGithubSource)) {
-    prefs.setString(kSpGithubSource, GithubSource.Default.name);
+  if (!prefs.containsKey(kSpGithubUrl)) {
+    prefs.setString(
+        kSpGithubUrl, 'https://github.com/iqfareez/masjidTV-waktusolat');
   }
+  if (!prefs.containsKey(kSpGithubKey)) {
+    prefs.setString(kSpGithubKey, dotenv.env['GH_REPO_PAT']!);
+  }
+
+  // init storage
+  await MyStorage.init();
 
   runApp(const MyApp());
 }
