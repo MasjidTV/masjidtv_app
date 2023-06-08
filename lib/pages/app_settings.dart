@@ -99,6 +99,7 @@ class _AppSettingsState extends State<AppSettings> {
                   keyboardType: TextInputType.number,
                 )),
           ),
+          const Divider(),
           ListTile(
             leading: const CircleAvatar(
               backgroundColor: Colors.black87,
@@ -114,14 +115,16 @@ class _AppSettingsState extends State<AppSettings> {
                 }),
             title: const Text('Source repository'),
             trailing: IconButton(
-              icon: Icon(Icons.edit),
+              icon: const Icon(Icons.edit),
               onPressed: () async {
+                final sp = await SharedPreferences.getInstance();
                 var res = await showDialog(
                   context: context,
                   builder: (_) {
-                    final controller = TextEditingController();
+                    final controller = TextEditingController(
+                        text: sp.getString(kSpGithubUrl) ?? '');
                     return AlertDialog(
-                      title: Text("Source repository"),
+                      title: const Text("Source repository"),
                       content: TextField(controller: controller),
                       actions: [
                         TextButton(
@@ -129,12 +132,12 @@ class _AppSettingsState extends State<AppSettings> {
                               Navigator.pop(context,
                                   'https://github.com/iqfareez/masjidTV-waktusolat');
                             },
-                            child: Text("Set default")),
+                            child: const Text("Set default")),
                         TextButton(
                             onPressed: () {
                               Navigator.pop(context);
                             },
-                            child: Text("Cancel")),
+                            child: const Text("Cancel")),
                         TextButton(
                             onPressed: () {
                               if (controller.text.isEmpty) {
@@ -144,14 +147,13 @@ class _AppSettingsState extends State<AppSettings> {
                               }
                               Navigator.pop(context, controller.text);
                             },
-                            child: Text("Save")),
+                            child: const Text("Save")),
                       ],
                     );
                   },
                 );
 
                 if (res != null) {
-                  final sp = await SharedPreferences.getInstance();
                   await sp.setString(kSpGithubUrl, res);
                   Fluttertoast.showToast(msg: "Github URL is saved");
                   setState(() {});
@@ -160,19 +162,21 @@ class _AppSettingsState extends State<AppSettings> {
             ),
           ),
           ListTile(
-            leading: CircleAvatar(
+            leading: const CircleAvatar(
               backgroundColor: Colors.blue,
               child: Icon(Icons.key, color: Colors.white),
             ),
-            title: Text("Repository Key"),
+            title: const Text("Repository Key"),
             subtitle: const Text('Only for a private repository'),
             onTap: () async {
+              final sp = await SharedPreferences.getInstance();
               var res = await showDialog(
                 context: context,
                 builder: (_) {
-                  final controller = TextEditingController();
+                  final controller = TextEditingController(
+                      text: sp.getString(kSpGithubKey) ?? '');
                   return AlertDialog(
-                    title: Text("Repository Key"),
+                    title: const Text("Repository Key"),
                     content: TextField(
                       controller: controller,
                     ),
@@ -181,12 +185,18 @@ class _AppSettingsState extends State<AppSettings> {
                           onPressed: () {
                             Navigator.pop(context, dotenv.env['GH_REPO_PAT']);
                           },
-                          child: Text("Set default")),
+                          child: const Text("Set default")),
                       TextButton(
                           onPressed: () {
                             Navigator.pop(context);
                           },
-                          child: Text("Cancel")),
+                          child: const Text("Cancel")),
+                      TextButton(
+                          onPressed: () {
+                            sp.remove(kSpGithubKey);
+                            Navigator.pop(context);
+                          },
+                          child: const Text("Clear key")),
                       TextButton(
                           onPressed: () {
                             if (controller.text.isEmpty) {
@@ -196,14 +206,13 @@ class _AppSettingsState extends State<AppSettings> {
                             }
                             Navigator.pop(context, controller.text);
                           },
-                          child: Text("Save")),
+                          child: const Text("Save")),
                     ],
                   );
                 },
               );
 
               if (res != null) {
-                final sp = await SharedPreferences.getInstance();
                 await sp.setString(kSpGithubKey, res);
                 Fluttertoast.showToast(msg: "Github Key is saved");
                 setState(() {});
@@ -280,6 +289,13 @@ class _AppSettingsState extends State<AppSettings> {
                 setState(() => _notificationEnabled = false);
               }
             },
+          ),
+          const Divider(),
+          const Spacer(),
+          const ListTile(
+            leading: Icon(Icons.warning, color: Colors.red),
+            title: Text(
+                "Please restart the app after settings have been modified"),
           )
         ],
       ),

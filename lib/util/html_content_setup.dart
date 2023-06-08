@@ -30,15 +30,11 @@ class HtmlContentSetup {
       await Permission.manageExternalStorage.request();
     }
 
-    // for default repo
-    var owner = 'iqfareez';
-    var repo = 'masjidTV-waktusolat';
-
     // check setting for GitHub Source
     final sp = await SharedPreferences.getInstance();
 
     var ghRepoUrl = sp.getString(kSpGithubUrl);
-    (owner, repo) = _retrieveGitHubOwnerRepo(ghRepoUrl!);
+    var (owner, repo) = _retrieveGitHubOwnerRepo(ghRepoUrl!);
 
     Fluttertoast.showToast(msg: "Downloading from $owner/$repo");
 
