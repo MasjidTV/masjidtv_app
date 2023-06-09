@@ -120,7 +120,7 @@ class _AppServerState extends State<AppServer>
   /// The shelf cannot open access from flutter assets
   Future<List<String>> _copyAssetsToDocuments() async {
     // Get the app documents directory.
-    final directory = await MyStorage.getMasjidTvDirectory();
+    final directory = MyStorage.getMasjidTvDirectory();
 
     // Get a handle to the asset bundle.
     final bundle = rootBundle;
@@ -178,7 +178,7 @@ class _AppServerState extends State<AppServer>
           '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json';
 
       // check if the file already exist
-      final dir = await MyStorage.getMasjidTvDirectory();
+      final dir = MyStorage.getMasjidTvDirectory();
       final dbFile = join(dir.path, 'db', fileName);
       final file = File(dbFile);
       if (await file.exists()) {
@@ -198,7 +198,7 @@ class _AppServerState extends State<AppServer>
         var jsonResponse = json.decode(response.body);
 
         // Save JSON data to a file
-        final dir = await MyStorage.getMasjidTvDirectory();
+        final dir = MyStorage.getMasjidTvDirectory();
         final saveAs = join(dir.path, 'db',
             '${jakimZone.toUpperCase()}-${targetMonthYear.month}-${targetMonthYear.year}.json');
 
@@ -230,7 +230,7 @@ class _AppServerState extends State<AppServer>
 
   /// List the filename in the prayer time database directory
   Future<List<String>> _listFilesInDbDirectory() async {
-    final dir = await MyStorage.getMasjidTvDirectory();
+    final dir = MyStorage.getMasjidTvDirectory();
     final savedZonePath = join(dir.path, 'db');
 
     // list all files in savedZonePath directory
@@ -242,7 +242,7 @@ class _AppServerState extends State<AppServer>
   /// Write the zone to the HTML server config file
   Future<void> _writeZoneToConfigFile(String jakimZone) async {
     // open a file
-    var dir = await MyStorage.getMasjidTvDirectory();
+    var dir = MyStorage.getMasjidTvDirectory();
     var file = File('${dir.path}/config.json');
 
     // read & parse the file

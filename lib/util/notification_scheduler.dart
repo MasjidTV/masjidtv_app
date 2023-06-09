@@ -26,7 +26,7 @@ class NotificationScheduler {
     final month = DateTime.now().month;
 
     // load data from json
-    final dbDir = join((await MyStorage.getMasjidTvDirectory()).path, 'db');
+    final dbDir = join((MyStorage.getMasjidTvDirectory()).path, 'db');
 
     final jsonFile = File(join(dbDir, '$zone-$month-$year.json'));
 

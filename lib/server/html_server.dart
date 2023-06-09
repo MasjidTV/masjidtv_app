@@ -19,7 +19,7 @@ class HtmlServer {
       await Permission.manageExternalStorage.request();
     }
     // Serve the device directory.
-    var htmlProjectDir = await MyStorage.getMasjidTvDirectory();
+    var htmlProjectDir = MyStorage.getMasjidTvDirectory();
     var handler =
         createStaticHandler(htmlProjectDir.path, defaultDocument: 'index.html');
 

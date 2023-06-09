@@ -58,7 +58,7 @@ class BackendServer {
   /// Retrieve config file from frontend and save it
   static Future<Response> _saveConfigFile(Request request) async {
     // open a file
-    final directory = await MyStorage.getMasjidTvDirectory();
+    final directory = MyStorage.getMasjidTvDirectory();
 
     var file = File('${directory.path}/config.json');
     debugPrint('Try accessing file: ${file.path}');

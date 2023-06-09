@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,7 +44,8 @@ class MyStorage {
       var externalDir = await _externalStoragePath();
       listDir.add(externalDir);
     } catch (e) {
-      print(e);
+      // ignore errors and proceed
+      debugPrint(e.toString());
     }
     var appDocDir = await getApplicationDocumentsDirectory();
     listDir.add(appDocDir);

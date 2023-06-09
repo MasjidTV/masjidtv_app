@@ -15,7 +15,7 @@ import 'my_storage.dart';
 class HtmlContentSetup {
   /// Check if was already setup
   static Future<bool> isAlreadySetup() async {
-    final directory = await MyStorage.getMasjidTvDirectory();
+    final directory = MyStorage.getMasjidTvDirectory();
     if (!await directory.exists()) return false;
     // check if contain index.html
     var files = await directory.list().toList();
