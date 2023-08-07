@@ -43,6 +43,13 @@ class _AppSettingsState extends State<AppSettings> {
     if (savedGithubUrl != null) {
       _githubUrlController.text = savedGithubUrl;
     }
+
+    var isNotificationEnabled = prefs.getBool(kSpNotificationSetting);
+    if (isNotificationEnabled != null) {
+      setState(() {
+        _notificationEnabled = isNotificationEnabled;
+      });
+    }
   }
 
   void _showToast(String message) {
@@ -265,6 +272,8 @@ class _AppSettingsState extends State<AppSettings> {
             title: const Text("Notification"),
             value: _notificationEnabled,
             onChanged: (value) async {
+              final SharedPreferences prefs =
+                  await SharedPreferences.getInstance();
               if (value) {
                 var res = await flutterLocalNotificationsPlugin
                     .resolvePlatformSpecificImplementation<
@@ -274,6 +283,7 @@ class _AppSettingsState extends State<AppSettings> {
                 if (res ?? false) {
                   setState(() => _notificationEnabled = true);
                   Fluttertoast.showToast(msg: "Notification is enabled");
+                  prefs.setBool(kSpNotificationSetting, true);
                   try {
                     await NotificationScheduler.scheduleBeepForCurrentMonth();
                   } catch (e) {
@@ -286,6 +296,8 @@ class _AppSettingsState extends State<AppSettings> {
                 }
               } else {
                 Fluttertoast.showToast(msg: "Notification has been disabled");
+                await NotificationScheduler.cancelNotification();
+                prefs.setBool(kSpNotificationSetting, false);
                 setState(() => _notificationEnabled = false);
               }
             },

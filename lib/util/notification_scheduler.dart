@@ -96,6 +96,10 @@ class NotificationScheduler {
     }
   }
 
+  static Future<void> cancelNotification() async {
+    await flutterLocalNotificationsPlugin.cancelAll();
+  }
+
   /// Single prayer azan notification
   static Future<void> _scheduleSingleBeepNotification(
       //for main prayer functionality
