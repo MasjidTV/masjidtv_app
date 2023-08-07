@@ -19,6 +19,7 @@ import '../server/html_server.dart';
 import '../util/html_content_setup.dart';
 import '../util/link_launcher.dart';
 import '../util/my_storage.dart';
+import '../util/override_http_certificate.dart';
 
 enum ServerStatus { started, starting, stopping, stopped }
 
@@ -193,7 +194,12 @@ class _AppServerState extends State<AppServer>
       debugPrint('Started fetching $uri');
       debugPrint('for month ${targetMonthYear.month}-${targetMonthYear.year}');
 
-      var response = await http.get(uri);
+      // For reasons, the call to the API failed with CERTIFICATE_VERIFY_FAILED
+      // when running on emulator with API 22. So, I have to override the
+      // certificate verification.
+      var response = await HttpOverrides.runWithHttpOverrides(() {
+        return http.get(uri);
+      }, OverrideHttpCertificate());
       if (response.statusCode == 200) {
         var jsonResponse = json.decode(response.body);
 
