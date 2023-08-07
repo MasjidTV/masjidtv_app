@@ -41,9 +41,16 @@ class BackendServer {
         .addMiddleware(logRequests())
         .addHandler(router);
 
-    _server = await serve(handler, ip, _port);
-    debugPrint('Server listening on port ${_server?.port}');
-    return _server!.port;
+    try {
+      _server = await serve(handler, ip, _port);
+      debugPrint('Server listening on port ${_server?.port}');
+      return _server!.port;
+    } on SocketException catch (e) {
+      debugPrint(e.message);
+      throw Exception(
+        "Can't start b'end server. Probably the port isn't clean. Close the app and reopen to try again",
+      );
+    }
   }
 
   static Future<void> stop() async => await _server?.close();
@@ -61,12 +68,15 @@ class BackendServer {
     final directory = MyStorage.getMasjidTvDirectory();
 
     var file = File('${directory.path}/config.json');
-    debugPrint('Try accessing file: ${file.path}');
+    debugPrint('Accessing file: ${file.path}');
 
     var contents = await request.readAsString();
 
     JsonEncoder encoder = const JsonEncoder.withIndent('  ');
     var prettyprint = encoder.convert(json.decode(contents));
+
+    // print the content
+    debugPrint('Content: $prettyprint');
 
     // write to a file
     file.writeAsStringSync(prettyprint);

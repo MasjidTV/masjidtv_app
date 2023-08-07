@@ -75,26 +75,35 @@ class _AppServerState extends State<AppServer>
       if (await FlutterBackground.hasPermissions) {
         if (_serverStatus != ServerStatus.started &&
             await HtmlContentSetup.isAlreadySetup()) {
+          debugPrint('Starting server from post frame callback');
           _startAllServer();
+        } else {
+          debugPrint('Server not started from post frame callback');
         }
+      } else {
+        debugPrint('No permission to start server from post frame callback');
       }
     });
   }
 
   /// https://pub.dev/packages/flutter_background
   Future<void> _initializeFlutterBackground() async {
+    // Don't set batteryOptimization to false, it will cause
+    // FlutterBackground.hasPermissions return false, and hence
+    // the server is not started during bootup
     var androidConfig = const FlutterBackgroundAndroidConfig(
       notificationTitle: "Masjid TV server is running",
-      notificationText:
-          "Background notification for keeping the example app running in the background",
+      notificationText: "App is running in the background",
       notificationImportance: AndroidNotificationImportance.Default,
-      shouldRequestBatteryOptimizationsOff: false,
       notificationIcon: AndroidResource(
           name: 'background_icon',
           defType: 'drawable'), // Default is ic_launcher from folder mipmap
     );
     bool success =
         await FlutterBackground.initialize(androidConfig: androidConfig);
+
+    debugPrint(
+        'permission background : ${await FlutterBackground.hasPermissions}');
 
     if (!success) debugPrint("Failed to initialize FlutterBackground");
   }
@@ -290,7 +299,7 @@ class _AppServerState extends State<AppServer>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Column(
+    return ListView(
       children: [
         ListTile(
           onTap: _serverStatus == ServerStatus.stopped ? _startAllServer : null,

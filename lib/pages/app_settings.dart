@@ -59,7 +59,7 @@ class _AppSettingsState extends State<AppSettings> {
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-      child: Column(
+      child: ListView(
         children: [
           ListTile(
             leading: const CircleAvatar(
@@ -291,7 +291,6 @@ class _AppSettingsState extends State<AppSettings> {
             },
           ),
           const Divider(),
-          const Spacer(),
           const ListTile(
             leading: Icon(Icons.warning, color: Colors.red),
             title: Text(

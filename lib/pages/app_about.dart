@@ -16,7 +16,7 @@ class _AppAboutState extends State<AppAbout> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return ListView(
       children: [
         ListTile(
           leading: const CircleAvatar(
