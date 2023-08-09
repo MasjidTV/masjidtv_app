@@ -28,6 +28,7 @@ class BackendServer {
     // Configure routes.
     final router = Router()
       ..get('/', _rootHandler)
+      ..get('/getConfig', _readConfigFile)
       ..post('/edit', _saveConfigFile);
 
     // Configure a pipeline that logs requests.
@@ -66,22 +67,39 @@ class BackendServer {
   static Future<Response> _saveConfigFile(Request request) async {
     // open a file
     final directory = MyStorage.getMasjidTvDirectory();
-
-    var file = File('${directory.path}/config.json');
+    final file = File('${directory.path}/config.json');
     debugPrint('Accessing file: ${file.path}');
 
-    var contents = await request.readAsString();
+    final contents = await request.readAsString();
 
     JsonEncoder encoder = const JsonEncoder.withIndent('  ');
-    var prettyprint = encoder.convert(json.decode(contents));
+    final prettyprint = encoder.convert(json.decode(contents));
 
     // print the content
-    debugPrint('Content: $prettyprint');
+    // debugPrint('Content: $prettyprint');
 
     // write to a file
     file.writeAsStringSync(prettyprint);
+
+    // re-read the content
+    // var verifyContent = file.readAsStringSync();
+    // debugPrint('Content: $verifyContent');
     return Response.ok('Written', headers: {
       'Content-Type': 'text/plain',
+      'Access-Control-Allow-Origin': '*'
+    });
+  }
+
+  /// read config file and return it to frontend
+  static Future<Response> _readConfigFile(Request request) async {
+    // open a file
+    final directory = MyStorage.getMasjidTvDirectory();
+    final file = File('${directory.path}/config.json');
+
+    final contents = await file.readAsString();
+    debugPrint('Read content: $contents');
+    return Response.ok(contents, headers: {
+      'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*'
     });
   }
