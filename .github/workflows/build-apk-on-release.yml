@@ -23,11 +23,11 @@ jobs:
           channel: "stable"
 
       # File can be encoded to base64 on https://base64.guru/converter/encode/file
-      # - name: Decoding android/key.properties
-      #   run: echo "${{ secrets.KEY_PROP }}" | base64 --decode > android/key.properties
+      - name: Decoding android/key.properties
+        run: echo "${{ secrets.KEY_PROP }}" | base64 --decode > android/key.properties
 
-      # - name: Decoding android/key.jks
-      #   run: echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
+      - name: Decoding android/key.jks
+        run: echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
 
       # - name: Build release appbundle
       #   if: "!github.event.release.prerelease"
@@ -73,7 +73,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: fat apk artifact
-          path: build/app/outputs/apk/release/app-release.apk
+          path: build/app/outputs/apk/release/MasjidTV-v*-release.apk
 
       - name: Adding markdown
         run: |
