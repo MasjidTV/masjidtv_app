@@ -340,6 +340,12 @@ class _AppServerState extends State<AppServer>
             onTap: () {
               LinkLauncher.launch('http://127.0.0.1:${HtmlServer.port}');
             },
+            onLongPress: () async {
+              // copy local address to clipboard
+              await Clipboard.setData(
+                  ClipboardData(text: 'http://127.0.0.1:${HtmlServer.port}'));
+              Fluttertoast.showToast(msg: 'Copied local address to clipboard');
+            },
             leading: const CircleAvatar(
               backgroundColor: Colors.indigo,
               child: Icon(Icons.router, color: Colors.white),
